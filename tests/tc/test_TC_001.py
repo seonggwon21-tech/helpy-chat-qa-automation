@@ -1,72 +1,59 @@
-# test_lnb_menu.py
+"""
+[TC-001] 새 대화 버튼 클릭 시 화면 전환 및 상태 초기화 검증
+- 사전 조건: test 계정으로 로그인된 상태
+- 테스트 절차:
+    1. '새 대화' 버튼 클릭
+    2. 화면 변경 확인
+    3. 입력창 value 확인
+    4. 대화 영역 메시지 요소 확인
+- 기대 결과:
+    1. 빈 대화 화면으로 이동
+    2. 입력창 초기화 (value = "")
+    3. 이전 대화 미표시
+"""
 
-import pytest
 import logging
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
 
 
-class TestLnbMenu:
-    """
-    LNB(좌측 메뉴) 관련 테스트
-    """
+class TestNewChatButton:
+    """새 대화 버튼 기능 검증 테스트 스위트"""
 
-    @pytest.mark.ui
-    def test_lnb_open_after_click_menu(self, logged_in_driver):
+    def test_new_chat_clears_conversation(self, logged_in_driver):
         """
-        시나리오:
-          1) 로그인 완료 상태 (logged_in_driver fixture에서 수행)
-          2) 좌측 상단 햄버거 메뉴 버튼 클릭
-
-        기대 결과:
-          - 왼쪽 LNB에 '새 대화' 메뉴가 보이면
-            LNB가 펼쳐진 것으로 판단
+        [TC-001] 로그인 상태에서 '새 대화' 버튼을 클릭하면
+        입력창이 초기화되고 이전 대화가 표시되지 않아야 한다.
         """
+        chat_page = ChatPage(logged_in_driver)
 
-        driver = logged_in_driver
-        wait = WebDriverWait(driver, 5)
+        test_message = "안녕하세요, 테스트 메시지입니다."
+        chat_page.send_message(test_message)
+        chat_page.wait_for_ai_response()
+        logger.info(f"사전 메시지 전송 완료: {test_message}")
 
-        # === (1) 햄버거 메뉴 버튼 선택자 ===
-        menu_button_locator = (
-            By.CSS_SELECTOR,
-            "button.MuiIconButton-root.css-1p4tfme"
+        current_url = logged_in_driver.current_url
+        chat_page.click(chat_page.NEW_CHAT_BUTTON)
+        logger.info("'새 대화' 버튼 클릭 완료")
+
+        chat_page.wait.until(EC.url_changes(current_url))
+        logger.info("새 대화 페이지로 전환 완료")
+
+        # [검증 1] 입력창 value 초기화 확인
+        input_element = chat_page.wait.until(
+            EC.visibility_of_element_located(chat_page.CHAT_INPUT)
         )
-
-        # 햄버거 버튼 클릭
-        menu_button = wait.until(
-            EC.element_to_be_clickable(menu_button_locator)
+        input_value = input_element.get_attribute("value")
+        assert input_value == "", (
+            f"입력창이 초기화되지 않았습니다. 현재 value: '{input_value}'"
         )
-        menu_button.click()
-        menu_button.click()
-        logger.info("햄버거 메뉴 버튼 클릭")
+        logger.info("입력창 초기화 확인 완료 (value = '')")
 
-        # === (2) LNB 열림 여부 확인 ===
-        lnb_first_item_locator = (
-            By.XPATH,
-            "//span[contains(@class, 'MuiListItemText-primary') and contains(text(), '새 대화')]"
+        # [검증 2] 대화 영역 메시지 요소 미표시 확인
+        message_elements = logged_in_driver.find_elements(*chat_page.CHAT_MESSAGE_ELEMENTS)
+        assert len(message_elements) == 0, (
+            f"새 대화 화면에 이전 메시지가 {len(message_elements)}개 남아있습니다."
         )
-
-        try:
-            lnb_first_item = wait.until(
-                EC.visibility_of_element_located(lnb_first_item_locator)
-            )
-        except TimeoutException:
-            pytest.fail(
-                "'새 대화' 메뉴가 보이지 않습니다. "
-                "(LNB가 열리지 않은 것 같아요.)"
-            )
-
-        # 텍스트 검증
-        assert "새 대화" in lnb_first_item.text, (
-            "LNB 항목 텍스트가 기대와 다릅니다."
-        )
-
-        logger.info(
-            "테스트 통과: 메뉴 버튼 클릭 시 "
-            "LNB(왼쪽 메뉴)가 펼쳐져 "
-            "'새 대화' 항목이 노출됩니다."
-        )
+        logger.info("이전 대화 미표시 확인 완료 (메시지 요소 없음)")
