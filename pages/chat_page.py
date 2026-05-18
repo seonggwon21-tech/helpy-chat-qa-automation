@@ -13,13 +13,11 @@ class ChatPage(BasePage):
     CHAT_INPUT = (By.CSS_SELECTOR, "textarea[name='input']") # 메시지 입력창
    # SVG 태그 특성을 고려한 XPATH 로케이터 적용
     SEND_BUTTON = (By.XPATH, "//button[.//*[local-name()='svg' and @data-testid='arrow-upIcon']]") # 전송 버튼
+    NEW_CHAT_BUTTON = (By.XPATH, "//a[contains(@href, 'ai-helpy-chat') and .//span[text()='새 대화']]") # 새 대화 버튼
 
-    # ChatPage에 미구현된 로케이터를 테스트 로컬에서 정의
-    NEW_CHAT_BUTTON = (By.XPATH, "//a[contains(@href, 'ai-helpy-chat') and .//span[text()='새 대화']]")
-    CHAT_MESSAGE_ELEMENTS = (By.CSS_SELECTOR, "div.elice-aichat__markdown")
-    
     # AI 응답 관련 Locators
     AI_MESSAGE_CONTENT = (By.CSS_SELECTOR, "div.elice-aichat__markdown[data-status='complete']") # AI의 답변 텍스트 박스
+    CHAT_MESSAGE_ELEMENTS = (By.CSS_SELECTOR, "div.elice-aichat__markdown") # 대화 영역 메시지 요소
 
     def __init__(self, driver):
         super().__init__(driver)
