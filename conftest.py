@@ -14,7 +14,10 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
 from requests.auth import HTTPBasicAuth
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8bf63ac44ca414e419e91a36b0075aa7fbcb21f
 from pages.login_page import LoginPage
 from pages.signup_page import SignupPage
 

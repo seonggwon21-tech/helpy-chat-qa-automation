@@ -27,7 +27,7 @@ class TestNewChat:
         """
 
         driver = logged_in_driver
-        wait = WebDriverWait(driver, 10)
+        wait = WebDriverWait(driver, 5)
 
         # === (1) LNB '새 대화' 버튼 클릭 ===
         new_chat_button_locator = (

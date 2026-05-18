@@ -1,0 +1,24 @@
+
+브라우저 개발자 도구(F12)에서 직접 테스트하는 방법
+CSS Selector 와 XPath 둘 다 코드 없이 바로 검증할 수 있습니다.
+
+방법 1 — Elements 탭에서 검색 (Ctrl+F)
+Elements 탭 열기 → Ctrl+F 로 검색창 열기 → CSS Selector 또는 XPath 입력하면 몇 개가 매칭되는지 바로 확인됩니다.
+# CSS Selector 입력 예시
+input[placeholder='검색']
+
+# XPath 입력 예시
+//input[@placeholder='검색']
+매칭된 요소가 노란색으로 하이라이트 되고, 몇 개가 잡혔는지 숫자로 표시됩니다. 1 of 1 이면 유일하게 특정된 것이므로 안정적인 로케이터입니다.
+
+방법 2 — Console 탭에서 검증 (가장 추천)
+Console 탭에서 아래 명령어를 입력하면 실제로 요소를 잡아서 보여줍니다.
+javascript// CSS Selector 검증
+document.querySelector("input[placeholder='검색']")
+
+// XPath 검증
+$x("//input[@placeholder='검색']")
+결과가 null 이면 못 찾은 것, 요소 객체가 반환되면 성공입니다.
+
+좋은 로케이터를 고르는 기준 (간단 요약)
+우선순위속성이유1순위data-testid테스트용으로 개발자가 직접 붙인 값2순위placeholder, href, role, type기능적 의미가 있어서 잘 안 바뀜3순위텍스트 내용다국어 서비스면 바뀔 수 있음4순위id, name있으면 가장 확실하지만 없는 경우가 많음❌ 사용 금지css-4m2luh 같은 자동생성 클래스배포마다 변경됨
