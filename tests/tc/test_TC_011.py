@@ -1,51 +1,35 @@
 """
-[TC-011] 전송 버튼 비활성화 검증
-- 사전 조건: test 계정으로 로그인된 상태, 새 대화 화면 진입 완료 후 입력창 빈 상태
+[TC-011] 채팅방 목록 조회 API 검증
+- 사전 조건: 유효한 인증 토큰 보유
 - 테스트 절차:
-    1. 새 대화 화면 진입
-    2. 입력창 빈 상태 확인
-    3. 전송 버튼 활성화 여부 확인
+    1. 인증 토큰으로 GET /chatrooms 요청
+    2. 응답 상태 코드 및 응답 바디 구조 확인
 - 기대 결과:
-    전송 버튼이 비활성화 상태로 표시됨 (disabled 속성 확인 가능)
+    상태 코드 200, 채팅방 목록 데이터 반환
 """
 
 import logging
-from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
 
 
-class TestSendButtonDisabled:
-    """입력창 빈 상태에서 전송 버튼 비활성화 검증 테스트 스위트"""
+class TestChatroomListAPI:
+    """채팅방 목록 조회 API 검증 테스트 스위트"""
 
-    def test_send_button_disabled_when_input_empty(self, logged_in_driver):
+    def test_chatroom_list_returns_200(self, api_session, api_base_url):
         """
-        [TC-011] 새 대화 화면에서 입력창이 비어 있을 때
-        전송 버튼이 비활성화(disabled) 상태여야 한다.
+        [TC-011] 인증된 사용자가 채팅방 목록을 조회하면
+        상태 코드 200과 목록 데이터가 반환되어야 한다.
         """
-        chat_page = ChatPage(logged_in_driver)
+        url = f"{api_base_url}/chatrooms"
+        response = api_session.get(url)
+        logger.info(f"채팅방 목록 API 응답 코드: {response.status_code}")
 
-        # 1. 새 대화 화면 진입
-        chat_page.click(chat_page.NEW_CHAT_BUTTON)
-        logger.info("새 대화 화면 진입 완료")
-
-        # 2. [검증 1] 입력창 빈 상태 확인
-        input_element = chat_page.wait.until(
-            EC.visibility_of_element_located(chat_page.CHAT_INPUT)
+        assert response.status_code == 200, (
+            f"채팅방 목록 조회 실패. 상태 코드: {response.status_code}, 응답: {response.text}"
         )
-        input_value = input_element.get_attribute("value")
-        assert input_value == "", (
-            f"입력창이 비어 있지 않습니다. 현재 value: '{input_value}'"
+        body = response.json()
+        assert isinstance(body, (list, dict)), (
+            f"예상치 못한 응답 형식. 응답 바디: {body}"
         )
-        logger.info("입력창 빈 상태 확인 완료")
-
-        # 3. [검증 2] 전송 버튼 비활성화(disabled) 확인
-        send_button = chat_page.wait.until(
-            EC.presence_of_element_located(chat_page.SEND_BUTTON)
-        )
-        is_disabled = send_button.get_attribute("disabled")
-        assert is_disabled is not None, (
-            "전송 버튼이 활성화 상태입니다. 입력창이 비어 있을 때 disabled 속성이 존재해야 합니다."
-        )
-        logger.info(f"전송 버튼 비활성화 확인 완료 (disabled='{is_disabled}')")
+        logger.info(f"채팅방 목록 조회 확인 완료. 응답 타입: {type(body).__name__}")

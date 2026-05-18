@@ -1,89 +1,49 @@
-# test_model_settings.py
+"""
+[TC-006] Shift+Enter 입력 시 줄바꿈 적용 및 전송 미동작 검증
+- 사전 조건: test 계정으로 로그인된 상태
+- 테스트 절차:
+    1. 텍스트 입력
+    2. Shift+Enter 입력
+    3. 전송 여부 확인
+- 기대 결과:
+    줄바꿈만 적용되고 메시지가 전송되지 않음
+    (전송 버튼 미동작 + 입력창 내 줄바꿈 확인)
+"""
 
-import pytest
 import logging
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
+from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
 
 
-class TestModelSettings:
-    """
-    채팅 화면 - 모델 설정 페이지 진입 테스트
-    """
+class TestShiftEnterNewline:
+    """Shift+Enter 줄바꿈 적용 및 전송 미동작 검증 테스트 스위트"""
 
-    @pytest.mark.ui
-    def test_model_settings_page_is_displayed(self, logged_in_driver):
+    def test_shift_enter_applies_newline_without_sending(self, logged_in_driver):
         """
-        시나리오:
-          1) 로그인 완료 상태 (logged_in_driver fixture에서 수행)
-          2) 현재 설정된 모델 버튼 클릭 (모델 목록 열기)
-          3) 모델 설정 버튼 클릭
-
-        전제 조건:
-          - 설정에 모델이 1개 이상 등록되어 있어야 함
-
-        기대 결과:
-          - 모델 설정 페이지가 노출됨
+        [TC-006] 텍스트 입력 후 Shift+Enter를 누르면
+        줄바꿈만 적용되고 메시지가 전송되지 않아야 한다.
         """
+        chat_page = ChatPage(logged_in_driver)
 
-        driver = logged_in_driver
-        wait = WebDriverWait(driver, 10)
+        test_message = "줄바꿈 테스트"
+        input_element = chat_page.enter_text(chat_page.CHAT_INPUT, test_message)
+        logger.info(f"텍스트 입력 완료: {test_message}")
 
-        # === (1) 현재 설정된 모델 버튼 클릭 (모델 목록 열기) ===
-        # 이전 케이스(test_model_change.py)와 동일한 로케이터 사용
-        current_model_button_locator = (
-            By.XPATH,
-            "//button[.//p[contains(@class, 'MuiTypography-noWrap')]]"
+        input_element.send_keys(Keys.SHIFT, Keys.ENTER)
+        logger.info("Shift+Enter 입력 완료")
+
+        # [검증 1] 입력창에 줄바꿈(\n)이 포함되어 있는지 확인 (전송 미동작)
+        input_value = input_element.get_attribute("value")
+        assert "\n" in input_value, (
+            f"줄바꿈이 적용되지 않았습니다. 현재 value: '{input_value}'"
         )
+        logger.info(f"줄바꿈 적용 확인 완료 (value: '{input_value}')")
 
-        try:
-            current_model_button = wait.until(
-                EC.element_to_be_clickable(current_model_button_locator)
-            )
-        except TimeoutException:
-            pytest.fail(
-                "현재 선택된 모델 버튼이 보이지 않습니다. "
-                "(설정에 모델이 1개 이상 등록되어 있는지 확인하세요.)"
-            )
-
-        current_model_button.click()
-
-        # === (2) 모델 설정 버튼 클릭 ===
-        model_settings_button_locator = (
-            By.XPATH,
-            "//a[@href='/ai-helpy-chat/admin/models' and @role='menuitem']"
-            # 예시 패턴: "//*[contains(text(), '모델 설정')]"
-            # 또는: "//button[contains(@class, '클래스명')]"
+        # [검증 2] AI 응답 요소가 생성되지 않았는지 확인 (메시지 전송 미동작)
+        ai_messages = logged_in_driver.find_elements(*chat_page.CHAT_MESSAGE_ELEMENTS)
+        assert len(ai_messages) == 0, (
+            f"Shift+Enter 입력 후 메시지가 전송되었습니다. AI 응답 요소 수: {len(ai_messages)}"
         )
-
-        try:
-            model_settings_button = wait.until(
-                EC.element_to_be_clickable(model_settings_button_locator)
-            )
-        except TimeoutException:
-            pytest.fail(
-                "모델 설정 버튼이 보이지 않습니다. "
-                "(모델 목록이 정상적으로 열렸는지 확인하세요.)"
-            )
-
-        model_settings_button.click()
-
-        # === (3) 기대 결과 확인: 모델 설정 페이지가 노출되는지 검증 ===
-        model_settings_page_locator = (
-            By.XPATH,
-            "# TODO: 모델 설정 페이지의 대표 요소(제목 또는 컨테이너) XPath를 입력하세요"
-            # 예시 패턴: "//*[contains(text(), '모델 설정')]"
-        )
-        try:
-            wait.until(EC.url_contains("/ai-helpy-chat/admin/models"))
-        except TimeoutException:
-            pytest.fail(
-                "모델 설정 페이지로 이동되지 않았습니다. "
-                "(URL이 '/ai-helpy-chat/admin/models'로 변경되지 않았어요.)"
-            )
-
-        logger.info("테스트 통과: 모델 설정 버튼 클릭 후 모델 설정 페이지가 정상적으로 노출됩니다.")
+        logger.info("메시지 전송 미동작 확인 완료 (AI 응답 요소 없음)")

@@ -1,56 +1,40 @@
 """
-[TC-010] Enter 키 입력 시 메시지 전송 및 AI 응답 출력 검증
-- 사전 조건: test 계정으로 로그인된 상태, 입력창에 텍스트 입력된 상태
+[TC-010] 로그인 API 인증 토큰 발급 검증
+- 사전 조건: 유효한 계정 정보 존재
 - 테스트 절차:
-    1. 텍스트 입력
-    2. 키보드 Enter 키 입력
-    3. 입력창 초기화 확인
-    4. AI 응답 요소 확인
+    1. POST /otp 엔드포인트에 자격증명 전송
+    2. 응답 상태 코드 및 응답 바디 확인
 - 기대 결과:
-    메시지가 전송되고 AI 응답이 출력됨
+    상태 코드 200, access_token 포함된 JSON 응답 반환
 """
 
 import logging
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_page import ChatPage
+import requests
 
 logger = logging.getLogger(__name__)
 
+AUTH_API_URL = "https://auth.example.com"
 
-class TestEnterKeySend:
-    """Enter 키 메시지 전송 기능 검증 테스트 스위트"""
 
-    def test_enter_key_sends_message_and_shows_response(self, logged_in_driver):
+class TestLoginAPI:
+    """로그인 API 인증 토큰 발급 검증 테스트 스위트"""
+
+    def test_login_returns_access_token(self, test_user):
         """
-        [TC-010] 텍스트 입력 후 Enter 키를 누르면
-        메시지가 전송되고 AI 응답이 출력되어야 한다.
+        [TC-010] 유효한 자격증명으로 POST /otp 요청 시
+        상태 코드 200과 access_token이 반환되어야 한다.
         """
-        chat_page = ChatPage(logged_in_driver)
+        url = f"{AUTH_API_URL}/login/otp"
+        payload = {"username": test_user["id"], "password": test_user["pw"]}
+        response = requests.post(url, json=payload)
+        logger.info(f"로그인 API 응답 코드: {response.status_code}")
 
-        # 1. 텍스트 입력
-        test_message = "소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘."
-        chat_page.enter_text(chat_page.CHAT_INPUT, test_message)
-        logger.info(f"텍스트 입력 완료: {test_message}")
-
-        # 2. Enter 키 입력
-        input_element = chat_page.wait.until(
-            EC.visibility_of_element_located(chat_page.CHAT_INPUT)
+        assert response.status_code == 200, (
+            f"로그인 실패. 상태 코드: {response.status_code}, 응답: {response.text}"
         )
-        input_element.send_keys(Keys.ENTER)
-        logger.info("Enter 키 입력 완료")
-
-        # 3. [검증 1] 입력창 초기화 확인
-        input_element = chat_page.wait.until(
-            EC.presence_of_element_located(chat_page.CHAT_INPUT)
+        body = response.json()
+        assert "access_token" in body, (
+            f"응답에 access_token 없음. 응답 바디: {body}"
         )
-        input_value = input_element.get_attribute("value")
-        assert input_value == "", (
-            f"입력창이 초기화되지 않았습니다. 현재 value: '{input_value}'"
-        )
-        logger.info("입력창 초기화 확인 완료 (value = '')")
-
-        # 4. [검증 2] AI 응답 요소 출력 확인
-        response_text = chat_page.wait_for_ai_response()
-        assert response_text, "AI 응답이 출력되지 않았습니다."
-        logger.info(f"AI 응답 출력 확인 완료: {response_text}")
+        assert body["access_token"], "access_token 값이 비어 있습니다."
+        logger.info("access_token 발급 확인 완료")

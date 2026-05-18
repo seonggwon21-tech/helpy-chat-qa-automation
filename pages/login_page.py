@@ -16,7 +16,7 @@ class LoginPage(BasePage):
     LOGIN_BUTTON = (By.XPATH, "//button[contains(text(), 'Login')]")
 
     def __init__(self, driver, base_url):
-        super().__init__(driver) # 부모 클래스의 driver, wait 초기화 활용
+        super().__init__(driver)
         self.base_url = base_url
 
     def open(self):
@@ -25,21 +25,14 @@ class LoginPage(BasePage):
 
     def login(self, login_id, password):
         """ID와 비밀번호를 입력하고 로그인 시도"""
-        self.enter_text(self.LOGIN_ID_INPUT, login_id) # ID 입력
-        self.enter_text(self.PASSWORD_INPUT, password) # 비밀번호 입력
-        self.click(self.LOGIN_BUTTON)                  # 로그인 버튼 클릭
+        self.enter_text(self.LOGIN_ID_INPUT, login_id)
+        self.enter_text(self.PASSWORD_INPUT, password)
+        self.click(self.LOGIN_BUTTON)
 
     def is_login_successful(self):
         """로그인 성공 후 URL에 메인 경로가 포함되었는지 확인"""
         try:
-            # 1단계: URL 주소 기반 확인 (가장 추천하는 방식)
-            # 로그인 성공 후 도달하는 메인 URL 경로가 나타날 때까지 대기
             self.wait.until(EC.url_contains("ai-helpy-chat"))
-            
-            # 2단계: (선택사항) 실제 서비스 화면이 그려졌는지 추가 확인
-            # 예를 들어 채팅 입력창(textarea)이 나타났는지 확인
-            # self.wait.until(EC.visibility_of_element_located((By.TAG_NAME, "textarea")))
-            
             return True
         except TimeoutException:
             return False
