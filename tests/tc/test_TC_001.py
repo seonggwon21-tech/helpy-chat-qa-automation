@@ -41,6 +41,7 @@ class TestLnbMenu:
             EC.element_to_be_clickable(menu_button_locator)
         )
         menu_button.click()
+        menu_button.click()
         logger.info("햄버거 메뉴 버튼 클릭")
 
         # === (2) LNB 열림 여부 확인 ===
