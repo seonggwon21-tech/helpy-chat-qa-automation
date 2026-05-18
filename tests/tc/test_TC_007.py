@@ -10,10 +10,12 @@
 """
 
 import logging
+import pytest
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.ui
 
 
 class TestLnbItemAdded:
