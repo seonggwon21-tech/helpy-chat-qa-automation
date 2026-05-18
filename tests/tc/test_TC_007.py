@@ -20,7 +20,6 @@ from pages.chat_page import ChatPage
 logger = logging.getLogger(__name__)
 
 
-
 class TestNewChatButton:
     """새 대화 버튼 기능 검증 테스트 스위트"""
 
