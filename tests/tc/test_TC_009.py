@@ -9,12 +9,14 @@
 """
 
 import logging
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.ui
 
 
 class TestLnbChatDelete:
