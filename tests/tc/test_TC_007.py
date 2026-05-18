@@ -13,9 +13,12 @@
 """
 
 import logging
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
+
 
 
 class TestNewChatButton:
@@ -34,19 +37,27 @@ class TestNewChatButton:
         chat_page.wait_for_ai_response()
         logger.info(f"사전 메시지 전송 완료: {test_message}")
 
-        # 2. '새 대화' 버튼 클릭
-        chat_page.click_new_chat()
+        # 2. '새 대화' 버튼 클릭 (BasePage.click 활용)
+        current_url = logged_in_driver.current_url
+        chat_page.click(chat_page.NEW_CHAT_BUTTON)
         logger.info("'새 대화' 버튼 클릭 완료")
 
+        # 페이지 전환 완료 대기 (URL 변경 감지)
+        WebDriverWait(logged_in_driver, 10).until(EC.url_changes(current_url))
+        logger.info("새 대화 페이지로 전환 완료")
+
         # 3. [검증 1] 입력창 value 초기화 확인
-        input_value = chat_page.get_input_value()
+        input_element = chat_page.wait.until(
+            EC.visibility_of_element_located(chat_page.CHAT_INPUT)
+        )
+        input_value = input_element.get_attribute("value")
         assert input_value == "", (
             f"입력창이 초기화되지 않았습니다. 현재 value: '{input_value}'"
         )
         logger.info("입력창 초기화 확인 완료 (value = '')")
 
         # 4. [검증 2] 대화 영역 메시지 요소 미표시 확인
-        message_elements = chat_page.get_chat_message_elements()
+        message_elements = logged_in_driver.find_elements(*chat_page.CHAT_MESSAGE_ELEMENTS)
         assert len(message_elements) == 0, (
             f"새 대화 화면에 이전 메시지가 {len(message_elements)}개 남아있습니다."
         )

@@ -28,7 +28,7 @@ class TestLnbMenu:
         """
 
         driver = logged_in_driver
-        wait = WebDriverWait(driver, 10)
+        wait = WebDriverWait(driver, 5)
 
         # === (1) 햄버거 메뉴 버튼 선택자 ===
         menu_button_locator = (
@@ -40,6 +40,7 @@ class TestLnbMenu:
         menu_button = wait.until(
             EC.element_to_be_clickable(menu_button_locator)
         )
+        menu_button.click()
         menu_button.click()
         logger.info("햄버거 메뉴 버튼 클릭")
 
