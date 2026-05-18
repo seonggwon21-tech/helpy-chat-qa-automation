@@ -46,7 +46,8 @@ def driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
-    # options.add_argument("--headless")  # CI/CD 환경용 - Jenkins 등 서버 (GUI 없이) 실행 시 활성화
+    if os.getenv("JENKINS_HOME"):
+        options.add_argument("--headless")
 
     driver = webdriver.Chrome(options=options)
 
@@ -116,3 +117,20 @@ def logged_in_driver(driver, base_url, test_user):
 
     assert login_page.is_login_successful() is True, "Fixture 사전 조건 설정 실패: 로그인 불가"
     return driver
+
+
+# =========================================================
+# [6] 테스트 실패 시 자동 스크린샷
+# =========================================================
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    if report.when == "call" and report.failed:
+        driver = item.funcargs.get("logged_in_driver") or item.funcargs.get("driver")
+        if driver:
+            os.makedirs("reports/screenshots", exist_ok=True)
+            safe_name = item.nodeid.replace("/", "_").replace("::", "_").replace("\\", "_")
+            screenshot_path = f"reports/screenshots/{safe_name}.png"
+            driver.save_screenshot(screenshot_path)
+            logger.info(f"실패 스크린샷 저장: {screenshot_path}")
