@@ -9,9 +9,11 @@
 """
 
 import logging
+import pytest
 import requests
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.api
 
 AUTH_API_URL = "https://auth.example.com"
 
