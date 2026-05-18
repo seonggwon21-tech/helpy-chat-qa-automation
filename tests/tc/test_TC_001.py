@@ -13,10 +13,12 @@
 """
 
 import logging
+import pytest
 from selenium.webdriver.support import expected_conditions as EC
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.ui
 
 
 class TestNewChatButton:

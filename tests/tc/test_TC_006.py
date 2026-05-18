@@ -11,10 +11,12 @@
 """
 
 import logging
+import pytest
 from selenium.webdriver.common.keys import Keys
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.ui
 
 
 class TestShiftEnterNewline:

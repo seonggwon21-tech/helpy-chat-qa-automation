@@ -9,8 +9,10 @@
 """
 
 import logging
+import pytest
 
 logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.api
 
 
 class TestChatroomListAPI:
