@@ -1,7 +1,7 @@
 """
 [TS-006] 커뮤니티 API 검증
-포함 TC: TC_011 (에이전트 목록 조회), TC_012 (에이전트 수 조회),
-         TC_013 (에이전트 상세 조회), TC_014 (미인증 접근 거부)
+포함 TC: TC_015 (에이전트 목록 조회), TC_016 (에이전트 수 조회),
+         TC_017 (에이전트 상세 조회), TC_018 (미인증 접근 거부)
 """
 
 import logging
@@ -20,9 +20,9 @@ class TestAgentAPI:
 
     @allure.title("에이전트 목록 조회 → 수 확인 → 상세 조회 시나리오")
     def test_agent_read_flow(self, api_session, api_base_url):
-        """에이전트 목록(TC_011) → 수 조회(TC_012) → 상세 조회(TC_013) 전체 플로우"""
+        """에이전트 목록(TC_015) → 수 조회(TC_016) → 상세 조회(TC_017) 전체 플로우"""
 
-        with allure.step("[TC_011] GET /agent → 200 및 리스트 구조 확인"):
+        with allure.step("[TC_015] GET /agent → 200 및 리스트 구조 확인"):
             response = api_session.get(f"{api_base_url}/agent", params={"skip": 0, "count": 10})
             logger.info(f"GET /agent 응답 코드: {response.status_code}")
             assert response.status_code == 200, \
@@ -33,7 +33,7 @@ class TestAgentAPI:
             assert len(agents) > 0, "에이전트 목록이 비어 있습니다."
             logger.info(f"에이전트 목록 조회 완료. 총 {len(agents)}개")
 
-        with allure.step("[TC_012] GET /agent/count → 200 및 count 정수 반환 확인"):
+        with allure.step("[TC_016] GET /agent/count → 200 및 count 정수 반환 확인"):
             response = api_session.get(f"{api_base_url}/agent/count")
             logger.info(f"GET /agent/count 응답 코드: {response.status_code}")
             assert response.status_code == 200, \
@@ -44,9 +44,9 @@ class TestAgentAPI:
                 f"count 값이 유효하지 않습니다. 응답: {body}"
             logger.info(f"에이전트 수 조회 완료. count: {count}")
 
-        with allure.step("[TC_013] GET /agent/{agent_id} → 200 및 상세 데이터 구조 확인"):
+        with allure.step("[TC_017] GET /agent/{agent_id} → 200 및 상세 데이터 구조 확인"):
             agent_id = agents[0].get("id") or agents[0].get("agent_id")
-            assert agent_id, "TC_011 응답에서 agent_id를 가져올 수 없습니다."
+            assert agent_id, "TC_015 응답에서 agent_id를 가져올 수 없습니다."
 
             response = api_session.get(f"{api_base_url}/agent/{agent_id}")
             logger.info(f"GET /agent/{agent_id} 응답 코드: {response.status_code}")
@@ -68,7 +68,7 @@ class TestChatroomAuth:
 
     @allure.title("인증 헤더 없이 요청 시 401 또는 403 반환 확인")
     def test_unauthorized_returns_401_or_403(self, api_base_url):
-        with allure.step("[TC_014] 인증 없이 GET /chatroom 요청"):
+        with allure.step("[TC_018] 인증 없이 GET /chatroom 요청"):
             response = requests.get(
                 f"{api_base_url}/chatroom",
                 headers={"x-elice-org-name-short": "qaproject"}
