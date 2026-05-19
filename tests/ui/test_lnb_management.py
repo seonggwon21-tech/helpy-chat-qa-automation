@@ -7,6 +7,7 @@ import logging
 import pytest
 import allure
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_page import ChatPage
@@ -43,7 +44,7 @@ class TestLnbManagement:
                     for el in d.find_elements(*chat_page.LNB_CHAT_ITEMS)
                 )
             )
-            chat_page.wait_for_ai_response()
+            long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
 
             after_hrefs = {
                 el.get_attribute("href")
@@ -74,18 +75,19 @@ class TestLnbManagement:
 
         with allure.step("[TC_021] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
             current_items = authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
-            current_count = len(current_items)
-            current_items[0].click()
+            target_href = current_items[0].get_attribute("href")
 
+            # hover → more 버튼 노출 → 클릭
+            ActionChains(authenticated_driver).move_to_element(current_items[0]).perform()
             chat_page.wait.until(EC.element_to_be_clickable(LNB_MORE_BUTTON)).click()
             chat_page.wait.until(EC.visibility_of_element_located(LNB_DELETE_BUTTON)).click()
             chat_page.wait.until(EC.element_to_be_clickable(CONFIRM_DELETE_BUTTON)).click()
 
+            # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load로 항목 보충 시 카운트 오차 방지)
             chat_page.wait.until(
-                lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) < current_count
+                lambda d: not any(
+                    el.get_attribute("href") == target_href
+                    for el in d.find_elements(*chat_page.LNB_CHAT_ITEMS)
+                )
             )
-            after_count = len(authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS))
-            assert after_count == current_count - 1, (
-                f"LNB 항목이 삭제되지 않았습니다. 삭제 전: {current_count}개, 삭제 후: {after_count}개"
-            )
-            logger.info("LNB 대화 삭제 확인 완료")
+            logger.info(f"LNB 대화 삭제 확인 완료: {target_href}")

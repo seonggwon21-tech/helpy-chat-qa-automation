@@ -120,10 +120,21 @@ def authenticated_driver(driver, base_url, test_user):
 
     cached_cookies = _load_cached_cookies()
     if cached_cookies:
-        driver.get(base_url)
+        # CDP로 도메인 제약 없이 쿠키 직접 주입 (SSO 리다이렉트 문제 우회)
+        driver.execute_cdp_cmd("Network.enable", {})
         for cookie in cached_cookies:
+            cdp_cookie = {
+                "name": cookie["name"],
+                "value": cookie["value"],
+                "domain": cookie.get("domain", "qaproject.elice.io"),
+                "path": cookie.get("path", "/"),
+                "secure": cookie.get("secure", False),
+                "httpOnly": cookie.get("httpOnly", False),
+            }
+            if "expiry" in cookie:
+                cdp_cookie["expires"] = cookie["expiry"]
             try:
-                driver.add_cookie(cookie)
+                driver.execute_cdp_cmd("Network.setCookie", cdp_cookie)
             except Exception:
                 pass
         driver.get(chat_url)
