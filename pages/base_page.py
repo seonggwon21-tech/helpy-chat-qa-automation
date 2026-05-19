@@ -29,6 +29,7 @@ class BasePage:
         element = self.wait_for_visible(locator)
         element.clear()
         element.send_keys(text)
+        return element
 
     @allure.step("텍스트 추출: {locator}")
     def get_text(self, locator: tuple) -> str:
