@@ -1,6 +1,6 @@
 """
-[TS-023] 메시지 입력 기능 검증
-포함 TC: TC_011, TC_010, TC_018
+[TS-003] 메시지 입력 기능 검증
+포함 TC: TC_004, TC_005, TC_006
 """
 
 import logging
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.ui
 
 @allure.epic("AI Helpy Chat")
 @allure.feature("메시지 입력")
-@allure.story("TS-023 · 메시지 입력 기능 검증")
+@allure.story("TS-003 · 메시지 입력 기능 검증")
 class TestInputFeatures:
 
     @allure.title("전송 버튼 비활성화 / Shift+Enter 줄바꿈 / Enter 전송 시나리오")
@@ -25,7 +25,7 @@ class TestInputFeatures:
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
         logger.info("새 대화 화면 진입")
 
-        with allure.step("[TC_011] 빈 입력창에서 전송 버튼 비활성화 확인"):
+        with allure.step("[TC_004] 빈 입력창에서 전송 버튼 비활성화 확인"):
             send_button = chat_page.wait.until(
                 EC.presence_of_element_located(chat_page.SEND_BUTTON)
             )
@@ -33,7 +33,7 @@ class TestInputFeatures:
                 "전송 버튼이 활성화 상태입니다. disabled 속성이 존재해야 합니다."
             logger.info("전송 버튼 비활성화 확인 완료")
 
-        with allure.step("[TC_018] Shift+Enter 입력 시 줄바꿈만 적용, 전송 미동작 확인"):
+        with allure.step("[TC_005] Shift+Enter 입력 시 줄바꿈만 적용, 전송 미동작 확인"):
             input_element = chat_page.enter_text(chat_page.CHAT_INPUT, "줄바꿈 테스트")
             input_element.send_keys(Keys.SHIFT, Keys.ENTER)
 
@@ -45,7 +45,7 @@ class TestInputFeatures:
                 f"Shift+Enter 입력 후 메시지가 전송되었습니다. AI 응답 요소 수: {len(ai_messages)}"
             logger.info("Shift+Enter 줄바꿈 적용 및 전송 미동작 확인 완료")
 
-        with allure.step("[TC_010] Enter 키 전송 후 AI 응답 출력 확인"):
+        with allure.step("[TC_006] Enter 키 전송 후 AI 응답 출력 확인"):
             input_element = chat_page.enter_text(
                 chat_page.CHAT_INPUT, "소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘."
             )

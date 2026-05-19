@@ -1,6 +1,6 @@
 """
-[TS-025] LNB 대화 목록 관리 검증
-포함 TC: TC_019, TC_020, TC_021
+[TS-005] LNB 대화 목록 관리 검증
+포함 TC: TC_008, TC_009, TC_010
 """
 
 import logging
@@ -22,7 +22,7 @@ CONFIRM_DELETE_BUTTON = (By.CSS_SELECTOR, "div.MuiDialogActions-root button.MuiB
 
 @allure.epic("AI Helpy Chat")
 @allure.feature("LNB 대화 목록")
-@allure.story("TS-025 · LNB 대화 목록 관리 검증")
+@allure.story("TS-005 · LNB 대화 목록 관리 검증")
 class TestLnbManagement:
 
     @allure.title("LNB 대화 항목 추가 → 새로고침 유지 → 삭제 시나리오")
@@ -36,7 +36,7 @@ class TestLnbManagement:
         }
         logger.info(f"초기 LNB 항목 수: {len(initial_hrefs)}")
 
-        with allure.step("[TC_019] 메시지 전송 후 LNB에 새 항목 추가 확인"):
+        with allure.step("[TC_008] 메시지 전송 후 LNB에 새 항목 추가 확인"):
             chat_page.send_message("LNB 목록 관리 테스트")
             long_wait.until(
                 lambda d: any(
@@ -55,7 +55,7 @@ class TestLnbManagement:
                 f"LNB에 새 항목이 정확히 1개 추가되지 않았습니다. 추가된 항목: {new_hrefs}"
             logger.info(f"LNB 신규 항목 추가 확인 완료: {new_hrefs}")
 
-        with allure.step("[TC_020] 페이지 새로고침 후 LNB 목록 유지 확인"):
+        with allure.step("[TC_009] 페이지 새로고침 후 LNB 목록 유지 확인"):
             before_refresh_hrefs = {
                 el.get_attribute("href")
                 for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
@@ -73,7 +73,7 @@ class TestLnbManagement:
             )
             logger.info("새로고침 후 LNB 목록 유지 확인 완료")
 
-        with allure.step("[TC_021] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
+        with allure.step("[TC_010] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
             current_items = authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
             target_href = current_items[0].get_attribute("href")
 

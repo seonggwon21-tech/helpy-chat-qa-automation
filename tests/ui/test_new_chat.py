@@ -1,6 +1,6 @@
 """
-[TS-022] 새 대화 전환 및 기존 대화 보존 검증
-포함 TC: TC_007, TC_009
+[TS-002] 새 대화 전환 및 기존 대화 보존 검증
+포함 TC: TC_002, TC_003
 """
 
 import logging
@@ -15,7 +15,7 @@ pytestmark = pytest.mark.ui
 
 @allure.epic("AI Helpy Chat")
 @allure.feature("새 대화")
-@allure.story("TS-022 · 새 대화 전환 및 기존 대화 보존 검증")
+@allure.story("TS-002 · 새 대화 전환 및 기존 대화 보존 검증")
 class TestNewChatAndHistory:
 
     @allure.title("새 대화 버튼 클릭 후 화면 초기화 및 기존 대화 LNB 보존·복원 확인")
@@ -29,7 +29,7 @@ class TestNewChatAndHistory:
 
         current_url = authenticated_driver.current_url
 
-        with allure.step("[TC_007] 새 대화 버튼 클릭 후 빈 화면으로 전환 확인"):
+        with allure.step("[TC_002] 새 대화 버튼 클릭 후 빈 화면으로 전환 확인"):
             chat_page.click(chat_page.NEW_CHAT_BUTTON)
             chat_page.wait.until(EC.url_changes(current_url))
             logger.info("새 대화 화면 전환 완료")
@@ -42,7 +42,7 @@ class TestNewChatAndHistory:
                 f"새 대화 화면에 이전 메시지가 {len(message_elements)}개 남아있습니다."
             logger.info("입력창 초기화 및 이전 메시지 미표시 확인 완료")
 
-        with allure.step("[TC_009] LNB에서 기존 대화 클릭 후 내용 복원 확인"):
+        with allure.step("[TC_003] LNB에서 기존 대화 클릭 후 내용 복원 확인"):
             chat_page.wait.until(EC.presence_of_element_located(chat_page.LNB_CHAT_ITEMS))
             lnb_items = authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
             assert len(lnb_items) > 0, "LNB 목록에 기존 대화가 존재하지 않습니다."
