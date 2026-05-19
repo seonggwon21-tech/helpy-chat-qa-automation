@@ -129,6 +129,8 @@ def authenticated_driver(driver, base_url, test_user):
         driver.get(chat_url)
         logger.info("캐시된 쿠키로 로그인 세션 복원 완료")
     else:
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
         signup_page = SignupPage(driver)
         login_page.open()
         login_page.login(test_user["id"], test_user["pw"])
@@ -136,14 +138,22 @@ def authenticated_driver(driver, base_url, test_user):
             signup_page.agree_and_submit()
         except TimeoutException:
             pass
+        # SSO 리다이렉트 완료(qaproject.elice.io 복귀) 후 쿠키 저장
+        try:
+            WebDriverWait(driver, 30).until(EC.url_contains("qaproject.elice.io"))
+        except TimeoutException:
+            pass
         _save_cookies(driver.get_cookies())
+        logger.info(f"UI 로그인 완료 및 쿠키 캐시 저장 (현재 URL: {driver.current_url})")
         driver.get(chat_url)
-        logger.info("UI 로그인 완료 및 쿠키 캐시 저장")
 
     if not login_page.is_login_successful():
         os.makedirs("reports/screenshots", exist_ok=True)
         driver.save_screenshot("reports/screenshots/fixture_login_failed.png")
         logger.error(f"로그인 실패 시점 URL: {driver.current_url}")
+        if _COOKIE_CACHE_PATH.exists():
+            _COOKIE_CACHE_PATH.unlink()
+            logger.info("만료된 쿠키 캐시 삭제 완료")
         pytest.fail("Fixture 사전 조건 설정 실패: 로그인 불가")
     return driver
 
