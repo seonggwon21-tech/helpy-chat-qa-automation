@@ -3,34 +3,46 @@
 WebDriver 초기화, 공통 환경 변수 관리 담당.
 """
 
+import json
+import os
+import time
 import pytest
 import requests
-import os
-import logging
+from pathlib import Path
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
+
 from pages.login_page import LoginPage
 from pages.signup_page import SignupPage
+from config.config import BASE_UI_URL, BASE_API_URL, TEST_USER, DEFAULT_API_TIMEOUT
+from utils.logger import get_custom_logger
 
-# .env 파일을 읽어서 OS 환경 변수로 메모리에 로드합니다. (로컬에서만 사용)
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+logger = get_custom_logger(__name__)
 
-
-# =========================================================
-# [1] 테스트 기본 정보 및 보안 설정
-# =========================================================
-BASE_UI_URL = "https://qaproject.elice.io"
-BASE_API_URL = "https://api.example.com"
 AUTH_API_URL = "https://auth.example.com"
 
-TEST_USER = {
-    "id": os.getenv("TEST_USER_ID"), # 환경 변수에 설정 - HelpyChat 아이디
-    "pw": os.getenv("TEST_USER_PW")  # 환경 변수에 설정 - HelpyChat 비밀번호
-}
+_COOKIE_CACHE_PATH = Path(".pytest_cache/elice_session.json")
+_COOKIE_TTL = 30 * 60  # 30분(초 단위)
+
+
+def _load_cached_cookies() -> list | None:
+    if not _COOKIE_CACHE_PATH.exists():
+        return None
+    with open(_COOKIE_CACHE_PATH) as f:
+        data = json.load(f)
+    if time.time() - data["timestamp"] > _COOKIE_TTL:
+        return None
+    return data["cookies"]
+
+
+def _save_cookies(cookies: list) -> None:
+    _COOKIE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(_COOKIE_CACHE_PATH, "w") as f:
+        json.dump({"timestamp": time.time(), "cookies": cookies}, f)
 
 
 # =========================================================
@@ -38,10 +50,6 @@ TEST_USER = {
 # =========================================================
 @pytest.fixture(scope="function")
 def driver():
-    """
-    각 테스트 함수마다 Selenium WebDriver를 초기화하고 브라우저 세션을 시작함.
-    테스트 종료 후 브라우저를 닫음(Teardown).
-    """
     options = Options()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -49,27 +57,25 @@ def driver():
     if os.getenv("JENKINS_HOME"):
         options.add_argument("--headless")
 
-    driver = webdriver.Chrome(options=options)
+    d = webdriver.Chrome(options=options)
+    yield d
+    try:
+        d.quit()
+    except Exception:
+        pass
 
-    yield driver
-    driver.quit()
 
 # =========================================================
 # [3] API 자동화 관련 Fixture: 인증 토큰 및 세션
 # =========================================================
 @pytest.fixture(scope="session")
 def auth_token():
-    """테스트 세션 시작 시 단 한 번 로그인하여 API 인증용 Bearer 토큰 획득."""
-    login_url = f"{AUTH_API_URL}/login/otp"
-    payload = {
-        "username": TEST_USER["id"],
-        "password": TEST_USER["pw"]
-    }
-    response = requests.post(login_url, json=payload)
-    if response.status_code == 200:
-        return response.json().get("access_token")
-    else:
-        pytest.fail(f"로그인 실패! 상태 코드: {response.status_code}")
+    """API 인증용 Bearer 토큰을 .env에서 직접 로드. Bearer 접두사는 자동 제거."""
+    token = os.getenv("AUTH_TOKEN")
+    if not token:
+        pytest.fail("AUTH_TOKEN이 .env에 설정되지 않았습니다.")
+    return token.removeprefix("Bearer ").strip()
+
 
 @pytest.fixture(scope="function")
 def api_session(auth_token):
@@ -78,10 +84,11 @@ def api_session(auth_token):
     session.headers.update({
         "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json",
-        "x-elice-org-name-short": "qaproject"
+        "x-elice-org-name-short": "qaproject",
     })
     yield session
     session.close()
+
 
 # =========================================================
 # [4] 공통 환경 설정 Fixture
@@ -90,32 +97,54 @@ def api_session(auth_token):
 def base_url():
     return BASE_UI_URL
 
+
 @pytest.fixture
 def api_base_url():
     return BASE_API_URL
+
 
 @pytest.fixture
 def test_user():
     return TEST_USER
 
+
 # =========================================================
 # [5] 사전 조건(Pre-condition) 특화 Fixture
 # =========================================================
 @pytest.fixture(scope="function")
-def logged_in_driver(driver, base_url, test_user):
-    """UI 로그인이 완료된 상태의 WebDriver를 제공."""
+def authenticated_driver(driver, base_url, test_user):
+    """UI 로그인이 완료된 상태의 WebDriver를 제공. 쿠키 캐싱으로 재로그인 최소화."""
     login_page = LoginPage(driver, base_url)
-    signup_page = SignupPage(driver)
 
-    login_page.open()
-    login_page.login(test_user["id"], test_user["pw"])
+    chat_url = f"{base_url}/ai-helpy-chat"
 
-    try:
-        signup_page.agree_and_submit()
-    except TimeoutException:
-        pass
+    cached_cookies = _load_cached_cookies()
+    if cached_cookies:
+        driver.get(base_url)
+        for cookie in cached_cookies:
+            try:
+                driver.add_cookie(cookie)
+            except Exception:
+                pass
+        driver.get(chat_url)
+        logger.info("캐시된 쿠키로 로그인 세션 복원 완료")
+    else:
+        signup_page = SignupPage(driver)
+        login_page.open()
+        login_page.login(test_user["id"], test_user["pw"])
+        try:
+            signup_page.agree_and_submit()
+        except TimeoutException:
+            pass
+        _save_cookies(driver.get_cookies())
+        driver.get(chat_url)
+        logger.info("UI 로그인 완료 및 쿠키 캐시 저장")
 
-    assert login_page.is_login_successful() is True, "Fixture 사전 조건 설정 실패: 로그인 불가"
+    if not login_page.is_login_successful():
+        os.makedirs("reports/screenshots", exist_ok=True)
+        driver.save_screenshot("reports/screenshots/fixture_login_failed.png")
+        logger.error(f"로그인 실패 시점 URL: {driver.current_url}")
+        pytest.fail("Fixture 사전 조건 설정 실패: 로그인 불가")
     return driver
 
 
@@ -126,8 +155,8 @@ def logged_in_driver(driver, base_url, test_user):
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
-    if report.when == "call" and report.failed:
-        driver = item.funcargs.get("logged_in_driver") or item.funcargs.get("driver")
+    if report.when in ("call", "setup") and report.failed:
+        driver = item.funcargs.get("authenticated_driver") or item.funcargs.get("driver")
         if driver:
             os.makedirs("reports/screenshots", exist_ok=True)
             safe_name = item.nodeid.replace("/", "_").replace("::", "_").replace("\\", "_")
