@@ -24,7 +24,7 @@
 
 | 분류 | 사용 기술 |
 |---|---|
-| 언어 | Python 3.11 |
+| 언어 | Python 3.14 |
 | UI 자동화 | Selenium 4, pytest |
 | 리포팅 | Allure Report (allure-pytest) |
 | 설계 패턴 | Page Object Model (POM) |
@@ -141,6 +141,12 @@ pytest tests/ui/ -m ui -v
 
 # 특정 테스트 파일 실행
 pytest tests/ui/test_message_send.py -v
+```
+
+### 4. Allure 리포트 확인
+
+```bash
+allure serve allure-results
 ```
 
 ---

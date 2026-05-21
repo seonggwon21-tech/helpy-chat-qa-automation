@@ -9,11 +9,13 @@ __pycache__/
 # pytest 캐시
 .pytest_cache/
 
-# 디버그 스크린샷 (docs/images/ 제외)
+# 디버그 스크린샷 (docs/ 하위 제외)
 *.png
 *.jpg
 !docs/images/*.png
 !docs/images/*.jpg
+!docs/bugs/**/*.png
+!docs/bugs/**/*.jpg
 
 # 리포트 결과물
 reports/
