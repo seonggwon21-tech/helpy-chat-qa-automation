@@ -72,6 +72,14 @@ def driver():
     if os.getenv("JENKINS_HOME"):
         options.add_argument("--headless")
 
+    download_dir = os.getenv("DOWNLOAD_DIR", str(Path.home() / "Downloads"))
+    options.add_experimental_option("prefs", {
+        "download.default_directory": download_dir,
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "safebrowsing.enabled": True,
+    })
+
     d = webdriver.Chrome(options=options)
     yield d
     try:

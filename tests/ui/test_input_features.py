@@ -57,4 +57,5 @@ class TestInputFeatures:
             long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
             response_text = chat_page.get_text(chat_page.AI_MESSAGE_CONTENT)
             assert response_text, "AI 응답이 출력되지 않았습니다."
+            assert len(response_text.strip()) > 0, "AI 응답 텍스트가 비어있습니다."
             logger.info(f"AI 응답 출력 확인 완료: {response_text}")

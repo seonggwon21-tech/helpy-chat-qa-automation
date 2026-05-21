@@ -83,9 +83,9 @@ class TestLnbManagement:
 
             # hover → more 버튼 노출 → 클릭
             ActionChains(authenticated_driver).move_to_element(current_items[0]).perform()
-            chat_page.wait.until(EC.element_to_be_clickable(LNB_MORE_BUTTON)).click()
-            chat_page.wait.until(EC.visibility_of_element_located(LNB_DELETE_BUTTON)).click()
-            chat_page.wait.until(EC.element_to_be_clickable(CONFIRM_DELETE_BUTTON)).click()
+            chat_page.click(LNB_MORE_BUTTON)
+            chat_page.click(LNB_DELETE_BUTTON)
+            chat_page.click(CONFIRM_DELETE_BUTTON)
 
             # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load로 항목 보충 시 카운트 오차 방지)
             chat_page.wait.until(

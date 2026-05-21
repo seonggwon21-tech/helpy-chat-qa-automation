@@ -48,7 +48,7 @@ class TestNewChatAndHistory:
             assert len(lnb_items) > 0, "LNB 목록에 기존 대화가 존재하지 않습니다."
             logger.info(f"LNB 기존 대화 {len(lnb_items)}개 확인")
 
-            chat_page.wait.until(EC.element_to_be_clickable(chat_page.LNB_CHAT_ITEMS)).click()
+            chat_page.click(chat_page.LNB_CHAT_ITEMS)
             chat_page.wait_for_ai_response()
             message_elements = authenticated_driver.find_elements(*chat_page.CHAT_MESSAGE_ELEMENTS)
             assert len(message_elements) > 0, "기존 대화 클릭 후 내용이 표시되지 않습니다."

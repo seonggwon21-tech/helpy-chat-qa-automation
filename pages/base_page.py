@@ -3,12 +3,22 @@
 공통 동작(클릭, 입력, 텍스트 추출 등)과 명시적 대기를 캡슐화합니다.
 """
 
+import time
+import logging
+
 import allure
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 
 from config.config import DEFAULT_WAIT_TIME
+
+logger = logging.getLogger(__name__)
 
 
 class BasePage:
@@ -20,34 +30,62 @@ class BasePage:
 
     @allure.step("클릭: {locator}")
     def click(self, locator: tuple):
-        """요소가 클릭 가능해질 때까지 대기 후 클릭합니다."""
-        self.wait.until(EC.element_to_be_clickable(locator)).click()
+        """요소가 클릭 가능해질 때까지 대기 후 안정적으로 클릭합니다.
+        React/MUI 환경의 intercept·stale element 문제를 방어합니다."""
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
+        self.wait.until(EC.element_to_be_clickable(locator))
+        time.sleep(0.3)
+
+        try:
+            element.click()
+        except (ElementClickInterceptedException, StaleElementReferenceException):
+            logger.warning(f"일반 클릭 실패, JS click으로 재시도합니다. locator={locator}")
+            element = self.wait.until(EC.presence_of_element_located(locator))
+            self.driver.execute_script("arguments[0].click();", element)
+
+    @allure.step("안전 클릭 (MUI 방어): {locator}")
+    def safe_click(self, locator: tuple, timeout: int = DEFAULT_WAIT_TIME):
+        """MUI 툴팁·Popper가 클릭을 가로막을 때 이를 제거하고 JS로 클릭합니다."""
+        wait = WebDriverWait(self.driver, timeout)
+        element = wait.until(EC.presence_of_element_located(locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
+        time.sleep(0.5)
+
+        try:
+            wait.until(EC.element_to_be_clickable(locator))
+            element.click()
+        except (ElementClickInterceptedException, TimeoutException):
+            self.driver.execute_script("""
+                const tooltips = document.querySelectorAll(
+                    '[role="tooltip"], .MuiTooltip-popper, .MuiPopper-root'
+                );
+                tooltips.forEach(el => { el.style.display = 'none'; });
+            """)
+            time.sleep(0.3)
+            self.driver.execute_script("arguments[0].click();", element)
 
     @allure.step("텍스트 입력: {locator} -> '{text}'")
     def enter_text(self, locator: tuple, text: str):
-        """요소가 화면에 보일 때까지 대기 후 텍스트를 입력합니다."""
-        element = self.wait_for_visible(locator)
+        """요소가 화면에 보일 때까지 대기 후 스크롤·초기화·입력합니다."""
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
         element.clear()
         element.send_keys(text)
         return element
 
     @allure.step("텍스트 추출: {locator}")
     def get_text(self, locator: tuple) -> str:
-        """요소가 화면에 보일 때까지 대기 후 텍스트를 반환합니다."""
         return self.wait_for_visible(locator).text
 
     @allure.step("요소 노출 대기: {locator}")
     def wait_for_visible(self, locator: tuple):
-        """요소가 화면에 렌더링되어 시각적으로 보일 때까지 대기하고 해당 요소를 반환합니다."""
         return self.wait.until(EC.visibility_of_element_located(locator))
 
     @allure.step("URL 변경 대기: '{text}' 포함 여부")
     def wait_for_url_contains(self, text: str):
-        """현재 브라우저의 URL에 특정 텍스트가 포함될 때까지 대기합니다."""
         self.wait.until(EC.url_contains(text))
 
     @allure.step("요소 사라짐 대기: {locator} (최대 {timeout}초)")
     def wait_until_invisible(self, locator: tuple, timeout: int = DEFAULT_WAIT_TIME):
-        """요소가 화면에서 완전히 사라질 때까지 지정된 시간만큼 대기합니다."""
-        custom_wait = WebDriverWait(self.driver, timeout)
-        custom_wait.until(EC.invisibility_of_element_located(locator))
+        WebDriverWait(self.driver, timeout).until(EC.invisibility_of_element_located(locator))
