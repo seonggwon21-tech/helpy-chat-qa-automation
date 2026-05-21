@@ -6,11 +6,13 @@
 
 ## 데모
 
-> 아래 이미지는 추후 추가 예정입니다.
+| pytest 실행 (시작) | pytest 실행 (완료) |
+|---|---|
+| ![pytest start](docs/images/pytest_start.gif) | ![pytest end](docs/images/pytest_end.gif) |
 
-| pytest 실행 (시작) | pytest 실행 (완료) | Allure 리포트 |
-|---|---|---|
-| ![pytest start](docs/images/pytest_start.gif) | ![pytest end](docs/images/pytest_end.gif) | ![Allure Report](docs/images/allure-report.png) |
+### Allure 리포트
+
+![Allure Report](docs/images/allure-report.png)
 
 ### 테스트 대상 서비스
 
@@ -43,20 +45,24 @@ helpy-chat-qa-automation/
 │   ├── signup_page.py
 │   └── chat_page.py
 ├── tests/
-│   └── ui/
-│       ├── test_message_send.py      # TS-001
-│       ├── test_new_chat.py          # TS-002
-│       ├── test_input_features.py    # TS-003
-│       ├── test_plus_menu.py         # TS-004
-│       └── test_lnb_management.py   # TS-005
+│   ├── ui/
+│   │   ├── test_message_send.py      # TS-001
+│   │   ├── test_new_chat.py          # TS-002
+│   │   ├── test_input_features.py    # TS-003
+│   │   ├── test_plus_menu.py         # TS-004
+│   │   └── test_lnb_management.py   # TS-005
+│   └── api/
+│       └── test_community_api.py    # TS-006
 ├── utils/
 │   └── logger.py
 ├── docs/
 │   ├── test_cases.csv        # TC/TS 전체 목록
+│   ├── bug-report.md         # 발견 결함 4건
 │   └── troubleshooting.md    # 트러블슈팅 기록 (10건)
 ├── conftest.py               # Fixture 정의 (WebDriver, 인증, 스크린샷)
 ├── pytest.ini
-└── .env                      # 자격증명 (gitignore 처리)
+├── .env.example              # 환경 변수 템플릿
+└── .env                      # 자격증명 (gitignore 처리, 직접 생성 필요)
 ```
 
 ---
@@ -100,11 +106,23 @@ pip install -r requirements.txt
 
 ### 2. 환경 변수 설정
 
-`.env` 파일을 생성하고 아래 값을 입력합니다.
+`.env.example`을 복사해 `.env`를 생성하고 실제 값을 입력합니다.
+
+```bash
+cp .env.example .env
+```
 
 ```env
+# UI 테스트용 계정
 TEST_USER_ID=your_email@example.com
 TEST_USER_PW=your_password
+
+# API 테스트용 Bearer 토큰
+AUTH_TOKEN=Bearer your_token_here
+
+# API 엔드포인트
+BASE_API_URL=https://your-api-domain.com
+AUTH_API_URL=https://your-auth-domain.com
 ```
 
 ### 3. 테스트 실행
