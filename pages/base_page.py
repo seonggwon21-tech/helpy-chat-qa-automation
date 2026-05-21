@@ -13,7 +13,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     StaleElementReferenceException,
-    TimeoutException,
 )
 
 from config.config import DEFAULT_WAIT_TIME
@@ -42,27 +41,6 @@ class BasePage:
         except (ElementClickInterceptedException, StaleElementReferenceException):
             logger.warning(f"일반 클릭 실패, JS click으로 재시도합니다. locator={locator}")
             element = self.wait.until(EC.presence_of_element_located(locator))
-            self.driver.execute_script("arguments[0].click();", element)
-
-    @allure.step("안전 클릭 (MUI 방어): {locator}")
-    def safe_click(self, locator: tuple, timeout: int = DEFAULT_WAIT_TIME):
-        """MUI 툴팁·Popper가 클릭을 가로막을 때 이를 제거하고 JS로 클릭합니다."""
-        wait = WebDriverWait(self.driver, timeout)
-        element = wait.until(EC.presence_of_element_located(locator))
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
-        time.sleep(0.5)
-
-        try:
-            wait.until(EC.element_to_be_clickable(locator))
-            element.click()
-        except (ElementClickInterceptedException, TimeoutException):
-            self.driver.execute_script("""
-                const tooltips = document.querySelectorAll(
-                    '[role="tooltip"], .MuiTooltip-popper, .MuiPopper-root'
-                );
-                tooltips.forEach(el => { el.style.display = 'none'; });
-            """)
-            time.sleep(0.3)
             self.driver.execute_script("arguments[0].click();", element)
 
     @allure.step("텍스트 입력: {locator} -> '{text}'")
