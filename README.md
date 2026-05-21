@@ -1,5 +1,126 @@
 # HelpyChat QA Automation
- 
- 
- 
- 
+
+**AI Helpy Chat** 서비스(qaproject.elice.io)를 대상으로 한 UI 자동화 테스트 포트폴리오 프로젝트입니다.
+
+---
+
+## 데모
+
+> 아래 이미지는 추후 추가 예정입니다.
+
+| pytest 실행 (시작) | pytest 실행 (완료) | Allure 리포트 |
+|---|---|---|
+| ![pytest start](docs/images/pytest_start.gif) | ![pytest end](docs/images/pytest_end.gif) | ![Allure Report](docs/images/allure-report.png) |
+
+### 테스트 대상 서비스
+
+![AI Helpy Chat](docs/images/test_message_send.png)
+
+---
+
+## 기술 스택
+
+| 분류 | 사용 기술 |
+|---|---|
+| 언어 | Python 3.11 |
+| UI 자동화 | Selenium 4, pytest |
+| 설계 패턴 | Page Object Model (POM) |
+| 인증 우회 | Chrome DevTools Protocol (CDP) 쿠키 주입 |
+| 환경 관리 | python-dotenv |
+| 로깅 | Python logging |
+
+---
+
+## 프로젝트 구조
+
+```
+helpy-chat-qa-automation/
+├── config/
+│   └── config.py          # URL, 대기 시간 등 전역 상수
+├── pages/
+│   ├── base_page.py        # 공통 Page Object 부모 클래스
+│   ├── login_page.py
+│   ├── signup_page.py
+│   └── chat_page.py
+├── tests/
+│   └── ui/
+│       ├── test_message_send.py      # TS-001
+│       ├── test_new_chat.py          # TS-002
+│       ├── test_input_features.py    # TS-003
+│       ├── test_plus_menu.py         # TS-004
+│       └── test_lnb_management.py   # TS-005
+├── utils/
+│   └── logger.py
+├── docs/
+│   ├── test_cases.csv        # TC/TS 전체 목록
+│   └── troubleshooting.md    # 트러블슈팅 기록 (10건)
+├── conftest.py               # Fixture 정의 (WebDriver, 인증, 스크린샷)
+├── pytest.ini
+└── .env                      # 자격증명 (gitignore 처리)
+```
+
+---
+
+## 테스트 구성
+
+| TS ID | 테스트 스위트 | TC 수 | 방식 |
+|---|---|---|---|
+| TS-001 | 메시지 전송 | TC_001~003 | 자동화 |
+| TS-002 | 새 대화 | TC_004~005 | 자동화 |
+| TS-003 | 메시지 입력 기능 | TC_006~008 | 자동화 |
+| TS-004 | + 버튼 메뉴 | TC_009~012 | 수동 |
+| TS-005 | LNB 대화 목록 관리 | TC_013~015 | 자동화 |
+
+> 전체 TC 목록: [docs/test_cases.csv](docs/test_cases.csv)
+
+---
+
+## 주요 구현 내용
+
+### SSO 인증 우회 (CDP 쿠키 주입)
+로그인 시 `accounts.elice.io`로 SSO 리다이렉트가 발생해 일반적인 `driver.add_cookie()` 방식으로는 도메인 오류가 발생함.  
+Chrome DevTools Protocol의 `Network.setCookie`를 사용해 도메인 제약 없이 쿠키를 직접 주입하는 방식으로 해결.
+
+### 쿠키 캐싱 (30분 TTL)
+매 테스트마다 로그인 반복을 방지하기 위해 `.pytest_cache/elice_session.json`에 세션 쿠키를 저장.  
+TTL(30분) 초과 또는 로그인 실패 시 캐시를 자동 삭제하고 재로그인.
+
+### 실패 시 자동 스크린샷
+`pytest_runtest_makereport` hook을 활용해 테스트 실패 시 `reports/screenshots/`에 자동 저장.
+
+---
+
+## 로컬 실행 방법
+
+### 1. 의존성 설치
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 환경 변수 설정
+
+`.env` 파일을 생성하고 아래 값을 입력합니다.
+
+```env
+TEST_USER_ID=your_email@example.com
+TEST_USER_PW=your_password
+```
+
+### 3. 테스트 실행
+
+```bash
+# UI 테스트 전체 실행
+pytest tests/ui/ -m ui -v
+
+# 특정 테스트 파일 실행
+pytest tests/ui/test_message_send.py -v
+```
+
+---
+
+## 문서
+
+- [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 4건 정리
+- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 10건 정리
+- [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)

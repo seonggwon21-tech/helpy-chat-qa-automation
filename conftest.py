@@ -5,8 +5,11 @@ WebDriver 초기화, 공통 환경 변수 관리 담당.
 
 import json
 import os
+import platform
+import sys
 import time
 import pytest
+import allure
 import requests
 from pathlib import Path
 from dotenv import load_dotenv
@@ -24,6 +27,18 @@ load_dotenv()
 logger = get_custom_logger(__name__)
 
 AUTH_API_URL = "https://auth.example.com"
+
+
+def pytest_sessionstart(session):
+    props = [
+        f"Python={sys.version.split()[0]}",
+        f"OS={platform.system()} {platform.release()}",
+        f"Browser=Chrome",
+        f"Target.URL={BASE_UI_URL}",
+        f"Environment=Local",
+    ]
+    Path("allure-results").mkdir(exist_ok=True)
+    Path("allure-results/environment.properties").write_text("\n".join(props), encoding="utf-8")
 
 _COOKIE_CACHE_PATH = Path(".pytest_cache/elice_session.json")
 _COOKIE_TTL = 30 * 60  # 30분(초 단위)
@@ -183,4 +198,6 @@ def pytest_runtest_makereport(item, call):
             safe_name = item.nodeid.replace("/", "_").replace("::", "_").replace("\\", "_")
             screenshot_path = f"reports/screenshots/{safe_name}.png"
             driver.save_screenshot(screenshot_path)
+            with open(screenshot_path, "rb") as f:
+                allure.attach(f.read(), name="실패 스크린샷", attachment_type=allure.attachment_type.PNG)
             logger.info(f"실패 스크린샷 저장: {screenshot_path}")

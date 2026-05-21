@@ -8,6 +8,7 @@ import pytest
 import allure
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class TestInputFeatures:
     @allure.title("전송 버튼 비활성화 / Shift+Enter 줄바꿈 / Enter 전송 시나리오")
     def test_input_features_scenario(self, authenticated_driver):
         chat_page = ChatPage(authenticated_driver)
+        long_wait = WebDriverWait(authenticated_driver, 60)
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
         logger.info("새 대화 화면 진입")
 
@@ -52,6 +54,7 @@ class TestInputFeatures:
             input_element.send_keys(Keys.ENTER)
             logger.info("Enter 키 전송 완료")
 
-            response_text = chat_page.wait_for_ai_response()
+            long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
+            response_text = chat_page.get_text(chat_page.AI_MESSAGE_CONTENT)
             assert response_text, "AI 응답이 출력되지 않았습니다."
             logger.info(f"AI 응답 출력 확인 완료: {response_text}")

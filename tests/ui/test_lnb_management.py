@@ -30,6 +30,12 @@ class TestLnbManagement:
         chat_page = ChatPage(authenticated_driver)
         long_wait = WebDriverWait(authenticated_driver, 60)
 
+        # LNB 항목이 로드될 때까지 대기 (빈 상태로 스냅샷 방지)
+        try:
+            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) > 0)
+        except Exception:
+            pass
+
         initial_hrefs = {
             el.get_attribute("href")
             for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
@@ -56,17 +62,15 @@ class TestLnbManagement:
             logger.info(f"LNB 신규 항목 추가 확인 완료: {new_hrefs}")
 
         with allure.step("[TC_013] 페이지 새로고침 후 LNB 목록 유지 확인"):
-            before_refresh_hrefs = {
-                el.get_attribute("href")
-                for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
-            }
+            before_refresh_hrefs = set(authenticated_driver.execute_script(
+                "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
+            ))
             authenticated_driver.refresh()
-            chat_page.wait.until(EC.presence_of_element_located(chat_page.LNB_CHAT_ITEMS))
+            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) >= len(before_refresh_hrefs))
 
-            after_refresh_hrefs = {
-                el.get_attribute("href")
-                for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
-            }
+            after_refresh_hrefs = set(authenticated_driver.execute_script(
+                "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
+            ))
             assert before_refresh_hrefs == after_refresh_hrefs, (
                 f"새로고침 후 LNB 목록이 변경되었습니다.\n"
                 f"이전: {before_refresh_hrefs}\n이후: {after_refresh_hrefs}"

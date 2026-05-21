@@ -220,3 +220,45 @@ chat_page.wait.until(
 ```python
 long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
 ```
+
+---
+
+## 11. LNB 초기 스냅샷 — 페이지 로드 전 캡처로 항목 0개
+
+**현상**  
+`test_lnb_management`에서 `초기 LNB 항목 수: 0` 로그 출력 후, 메시지 전송 뒤 신규 항목이 1개가 아닌 15개로 잡혀 AssertionError 발생.
+
+**원인**  
+`authenticated_driver` 픽스처가 페이지 이동 후 즉시 반환되는데, LNB 항목이 비동기로 로드되어 아직 렌더링되지 않은 상태에서 `initial_hrefs`를 캡처함.  
+이후 메시지 전송 시 LNB가 뒤늦게 전체 로드되어 기존 항목 15개가 모두 "신규"로 인식됨.
+
+**해결**  
+초기 스냅샷 전에 LNB 항목이 1개 이상 로드될 때까지 명시적으로 대기.
+
+```python
+try:
+    long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) > 0)
+except Exception:
+    pass  # LNB가 진짜 비어있는 경우 허용
+```
+
+---
+
+## 12. StaleElementReferenceException — 새로고침 후 DOM 교체 중 요소 참조
+
+**현상**  
+TC_013(새로고침 후 LNB 목록 유지 확인)에서 `driver.refresh()` 이후 LNB 항목의 `get_attribute("href")` 호출 시 `StaleElementReferenceException` 발생.
+
+**원인**  
+`presence_of_element_located`로 첫 번째 요소 등장을 확인한 직후 `find_elements`로 전체 요소를 수집했으나,  
+페이지가 아직 렌더링 중이어서 수집된 요소들이 DOM에서 교체되어 stale 상태가 됨.
+
+**해결**  
+요소 참조 대신 JavaScript로 href를 한 번에 수집하여 DOM 교체 타이밍 문제 우회.  
+또한 `long_wait`으로 새로고침 전 항목 수만큼 로드될 때까지 대기 후 수집.
+
+```python
+after_refresh_hrefs = set(authenticated_driver.execute_script(
+    "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
+))
+```
