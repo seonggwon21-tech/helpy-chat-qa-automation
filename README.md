@@ -26,6 +26,7 @@
 |---|---|
 | 언어 | Python 3.11 |
 | UI 자동화 | Selenium 4, pytest |
+| 리포팅 | Allure Report (allure-pytest) |
 | 설계 패턴 | Page Object Model (POM) |
 | 인증 우회 | Chrome DevTools Protocol (CDP) 쿠키 주입 |
 | 환경 관리 | python-dotenv |
@@ -40,7 +41,7 @@ helpy-chat-qa-automation/
 ├── config/
 │   └── config.py          # URL, 대기 시간 등 전역 상수
 ├── pages/
-│   ├── base_page.py        # 공통 Page Object 부모 클래스
+│   ├── base_page.py        # 공통 Page Object 부모 클래스 (click/safe_click/enter_text)
 │   ├── login_page.py
 │   ├── signup_page.py
 │   └── chat_page.py
@@ -53,11 +54,15 @@ helpy-chat-qa-automation/
 │   │   └── test_lnb_management.py   # TS-005
 │   └── api/
 │       └── test_community_api.py    # TS-006
+├── test_data/
+│   └── test_upload.txt    # 파일 업로드 TC용 더미 파일
 ├── utils/
 │   └── logger.py
 ├── docs/
+│   ├── bugs/
+│   │   └── TC_009/        # 버그 재현 GIF 및 스크린샷
 │   ├── test_cases.csv        # TC/TS 전체 목록
-│   ├── bug-report.md         # 발견 결함 4건
+│   ├── bug-report.md         # 발견 결함 5건
 │   └── troubleshooting.md    # 트러블슈팅 기록 (10건)
 ├── conftest.py               # Fixture 정의 (WebDriver, 인증, 스크린샷)
 ├── pytest.ini
@@ -71,11 +76,11 @@ helpy-chat-qa-automation/
 
 | TS ID | 테스트 스위트 | TC 수 | 방식 |
 |---|---|---|---|
-| TS-001 | 메시지 전송 | TC_001~003 | 자동화 |
-| TS-002 | 새 대화 | TC_004~005 | 자동화 |
-| TS-003 | 메시지 입력 기능 | TC_006~008 | 자동화 |
-| TS-004 | + 버튼 메뉴 | TC_009~012 | 수동 |
-| TS-005 | LNB 대화 목록 관리 | TC_013~015 | 자동화 |
+| TS-001 | 메시지 전송 | TC_001 | 자동화 |
+| TS-002 | 새 대화 | TC_002~003 | 자동화 |
+| TS-003 | 메시지 입력 기능 | TC_004~006 | 자동화 |
+| TS-004 | + 버튼 메뉴 | TC_007~011 | 자동화 (TC_009 xfail — 앱 버그) |
+| TS-005 | LNB 대화 목록 관리 | TC_012~014 | 자동화 |
 
 > 전체 TC 목록: [docs/test_cases.csv](docs/test_cases.csv)
 
@@ -123,6 +128,9 @@ AUTH_TOKEN=Bearer your_token_here
 # API 엔드포인트
 BASE_API_URL=https://your-api-domain.com
 AUTH_API_URL=https://your-auth-domain.com
+
+# 파일 다운로드 경로 (미설정 시 ~/Downloads 사용)
+DOWNLOAD_DIR=/path/to/download/directory
 ```
 
 ### 3. 테스트 실행
@@ -139,6 +147,6 @@ pytest tests/ui/test_message_send.py -v
 
 ## 문서
 
-- [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 4건 정리
+- [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 5건 정리 (BUG-005: 이미지 다운로드 미동작, xfail 처리)
 - [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 10건 정리
 - [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)
