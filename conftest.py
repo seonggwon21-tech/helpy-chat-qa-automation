@@ -26,7 +26,7 @@ load_dotenv()
 
 logger = get_custom_logger(__name__)
 
-AUTH_API_URL = "https://auth.example.com"
+AUTH_API_URL = os.getenv("AUTH_API_URL", "")
 
 
 def pytest_sessionstart(session):
