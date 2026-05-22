@@ -69,6 +69,7 @@ helpy-chat-qa-automation/
 │   ├── bug-report.md         # 발견 결함 5건
 │   └── troubleshooting.md    # 트러블슈팅 기록 (10건)
 ├── conftest.py               # Fixture 정의 (WebDriver, 인증, 스크린샷)
+├── Jenkinsfile
 ├── pytest.ini
 ├── .env.example              # 환경 변수 템플릿
 └── .env                      # 자격증명 (gitignore 처리, 직접 생성 필요)
