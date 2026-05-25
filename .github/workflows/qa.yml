@@ -1,0 +1,72 @@
+name: QA Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt --quiet
+
+      - name: Run API tests
+        env:
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          BASE_API_URL: ${{ secrets.BASE_API_URL }}
+        run: python -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: |
+            result-api.xml
+            allure-results/
+
+  ui-tests:
+    name: UI Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt --quiet
+
+      - name: Run UI tests
+        env:
+          TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+          TEST_USER_PW: ${{ secrets.TEST_USER_PW }}
+        run: python -m pytest -m ui --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-results
+          path: |
+            result-ui.xml
+            allure-results/
+            reports/
