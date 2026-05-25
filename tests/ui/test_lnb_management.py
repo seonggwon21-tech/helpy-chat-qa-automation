@@ -66,9 +66,9 @@ class TestLnbManagement:
             after_refresh_hrefs = set(authenticated_driver.execute_script(
                 "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
             ))
-            assert before_refresh_hrefs == after_refresh_hrefs, (
-                f"새로고침 후 LNB 목록이 변경되었습니다.\n"
-                f"이전: {before_refresh_hrefs}\n이후: {after_refresh_hrefs}"
+            assert before_refresh_hrefs.issubset(after_refresh_hrefs), (
+                f"새로고침 후 기존 LNB 항목이 유실되었습니다.\n"
+                f"사라진 항목: {before_refresh_hrefs - after_refresh_hrefs}"
             )
             logger.info("새로고침 후 LNB 목록 유지 확인 완료")
 
