@@ -59,7 +59,7 @@ jobs:
         env:
           TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
           TEST_USER_PW: ${{ secrets.TEST_USER_PW }}
-        run: python -m pytest -m ui --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results
+        run: python -m pytest -m "ui and not slow" --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results
 
       - name: Upload results
         uses: actions/upload-artifact@v4

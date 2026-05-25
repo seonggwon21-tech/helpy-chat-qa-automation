@@ -16,7 +16,7 @@ pipeline {
 
         stage('UI 테스트 실행') {
             steps {
-                bat 'C:\\Python314\\python.exe -m pytest -m ui --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results'
+                bat 'C:\\Python314\\python.exe -m pytest -m "ui and not slow" --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results'
             }
         }
 

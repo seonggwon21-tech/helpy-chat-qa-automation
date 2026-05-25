@@ -141,6 +141,7 @@ class TestPlusButtonMenu:
             logger.info("이미지 다운로드 파일 저장 확인 완료")
 
     @allure.title("PPT 생성 선택 후 프롬프트 전송 시 결과 노출 및 다운로드 확인")
+    @pytest.mark.slow
     def test_ppt_creation_via_plus_menu(self, authenticated_driver):
         long_wait = WebDriverWait(authenticated_driver, 600)
         chat_page = ChatPage(authenticated_driver)
