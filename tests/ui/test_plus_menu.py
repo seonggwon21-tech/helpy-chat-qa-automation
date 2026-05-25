@@ -51,6 +51,7 @@ class TestPlusButtonMenu:
                 logger.info(f'"{label}" 메뉴 노출 확인 완료')
 
     @allure.title("파일 업로드 선택 후 입력창에 첨부 칩 노출 확인")
+    @pytest.mark.skipif(bool(os.getenv("CI")), reason="headless CI 환경에서 file input 미노출 — 로컬에서만 실행")
     def test_file_upload_via_plus_menu(self, authenticated_driver):
         chat_page = ChatPage(authenticated_driver)
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
