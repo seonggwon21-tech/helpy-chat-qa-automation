@@ -18,6 +18,10 @@
 |---|---|
 | ![pytest start](docs/images/pytest_start.gif) | ![pytest end](docs/images/pytest_end.gif) |
 
+### Jenkins CI — 빌드 성공
+
+![Jenkins Build Success](docs/images/jenkins-success.png)
+
 ### Allure 리포트
 
 ![Allure Report](docs/images/allure-report.png)
@@ -34,7 +38,9 @@
 |---|---|
 | 언어 | Python 3.14 |
 | UI 자동화 | Selenium 4, pytest |
+| API 자동화 | requests, pytest |
 | 리포팅 | Allure Report (allure-pytest) |
+| CI/CD | Jenkins (Declarative Pipeline), GitHub Actions |
 | 설계 패턴 | Page Object Model (POM) |
 | 인증 우회 | Chrome DevTools Protocol (CDP) 쿠키 주입 |
 | 환경 관리 | python-dotenv |
@@ -85,11 +91,12 @@ helpy-chat-qa-automation/
 
 | TS ID | 테스트 스위트 | TC 수 | 방식 |
 |---|---|---|---|
-| TS-001 | 메시지 전송 | TC_001 | 자동화 |
-| TS-002 | 새 대화 | TC_002~003 | 자동화 |
-| TS-003 | 메시지 입력 기능 | TC_004~006 | 자동화 |
-| TS-004 | + 버튼 메뉴 | TC_007~011 | 자동화 (TC_009 xfail — 앱 버그) |
-| TS-005 | LNB 대화 목록 관리 | TC_012~014 | 자동화 |
+| TS-001 | 메시지 전송 | TC_001 | UI 자동화 |
+| TS-002 | 새 대화 | TC_002~003 | UI 자동화 |
+| TS-003 | 메시지 입력 기능 | TC_004~006 | UI 자동화 |
+| TS-004 | + 버튼 메뉴 | TC_007~011 | UI 자동화 (TC_009 xfail — 앱 버그) |
+| TS-005 | LNB 대화 목록 관리 | TC_012~014 | UI 자동화 |
+| TS-006 | Community API | - | API 자동화 (인증 · 에이전트 조회) |
 
 > 전체 TC 목록: [docs/test_cases.csv](docs/test_cases.csv)
 
@@ -145,10 +152,13 @@ DOWNLOAD_DIR=/path/to/download/directory
 ### 3. 테스트 실행
 
 ```bash
-# UI 테스트 전체 실행
-pytest tests/ui/ -m ui -v
+# UI 테스트 실행 (slow 제외)
+pytest -m "ui and not slow" --tb=short -v
 
-# 특정 테스트 파일 실행
+# API 테스트 실행
+pytest -m api --tb=short -v
+
+# 특정 파일 실행
 pytest tests/ui/test_message_send.py -v
 ```
 
@@ -157,6 +167,13 @@ pytest tests/ui/test_message_send.py -v
 ```bash
 allure serve allure-results
 ```
+
+### 5. CI 실행 (Jenkins)
+
+`Jenkinsfile` 기반 Declarative Pipeline으로 UI · API 테스트를 순차 실행하고 Allure Report를 자동 생성합니다.  
+`AUTH_TOKEN`은 Jenkins Credentials (Secret text)에 등록해 주입하며, 코드에는 노출되지 않습니다.
+
+GitHub Actions(`.github/workflows/qa.yml`)는 `main` · `develop` 브랜치 push/PR 시 API 테스트를 ubuntu-latest에서 자동 실행합니다.
 
 ---
 
