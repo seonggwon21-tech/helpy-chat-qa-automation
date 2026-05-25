@@ -7,6 +7,13 @@ pipeline {
     }
 
     stages {
+        stage('초기화') {
+            steps {
+                bat 'if exist allure-results rmdir /s /q allure-results'
+                bat 'if exist reports rmdir /s /q reports'
+            }
+        }
+
         stage('체크아웃') {
             steps {
                 checkout scm
