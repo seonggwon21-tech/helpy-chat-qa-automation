@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AUTH_TOKEN   = credentials('AUTH_TOKEN')
-        BASE_API_URL = credentials('BASE_API_URL')
+        BASE_API_URL = 'https://api-community.elice.io'
     }
 
     stages {
