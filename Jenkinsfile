@@ -23,10 +23,9 @@ pipeline {
         stage('API 테스트 실행') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'AUTH_TOKEN',   variable: 'AUTH_TOKEN'),
-                    string(credentialsId: 'BASE_API_URL', variable: 'BASE_API_URL')
+                    string(credentialsId: 'AUTH_TOKEN', variable: 'AUTH_TOKEN')
                 ]) {
-                    bat 'C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
+                    bat 'set BASE_API_URL=https://api-community.elice.io && C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
                 }
             }
         }
