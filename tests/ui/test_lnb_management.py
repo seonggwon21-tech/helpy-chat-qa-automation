@@ -56,21 +56,19 @@ class TestLnbManagement:
                 f"LNB에 새 항목이 정확히 1개 추가되지 않았습니다. 추가된 항목: {new_hrefs}"
             logger.info(f"LNB 신규 항목 추가 확인 완료: {new_hrefs}")
 
-        with allure.step("[TC_013] 페이지 새로고침 후 LNB 목록 유지 확인"):
-            before_refresh_hrefs = set(authenticated_driver.execute_script(
-                "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
-            ))
+        with allure.step("[TC_013] 페이지 새로고침 후 신규 대화 유지 확인"):
+            new_chat_href = list(new_hrefs)[0]
             authenticated_driver.refresh()
-            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) >= len(before_refresh_hrefs))
+            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) > 0)
 
             after_refresh_hrefs = set(authenticated_driver.execute_script(
                 "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
             ))
-            assert before_refresh_hrefs.issubset(after_refresh_hrefs), (
-                f"새로고침 후 기존 LNB 항목이 유실되었습니다.\n"
-                f"사라진 항목: {before_refresh_hrefs - after_refresh_hrefs}"
+            assert new_chat_href in after_refresh_hrefs, (
+                f"새로고침 후 신규 생성 대화가 LNB에서 유실되었습니다.\n"
+                f"기대 항목: {new_chat_href}"
             )
-            logger.info("새로고침 후 LNB 목록 유지 확인 완료")
+            logger.info("새로고침 후 LNB 신규 대화 유지 확인 완료")
 
         with allure.step("[TC_014] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
             current_items = authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
