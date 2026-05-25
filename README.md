@@ -110,7 +110,8 @@ Chrome DevTools Protocol의 `Network.setCookie`를 사용해 도메인 제약 �
 
 ### 쿠키 캐싱 (30분 TTL)
 매 테스트마다 로그인 반복을 방지하기 위해 `.pytest_cache/elice_session.json`에 세션 쿠키를 저장.  
-TTL(30분) 초과 또는 로그인 실패 시 캐시를 자동 삭제하고 재로그인.
+TTL(30분) 초과 또는 로그인 실패 시 캐시를 자동 삭제하고 재로그인.  
+`.pytest_cache/`는 `.gitignore` 처리되어 원격 저장소에 커밋되지 않습니다.
 
 ### 실패 시 자동 스크린샷
 `pytest_runtest_makereport` hook을 활용해 테스트 실패 시 `reports/screenshots/`에 자동 저장.
