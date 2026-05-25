@@ -206,7 +206,7 @@ class TestPlusButtonMenu:
             logger.info("웹 검색어 전송 완료")
 
         with allure.step("[TC_011] AI 응답 텍스트 노출 확인"):
-            response_text = chat_page.get_text(chat_page.AI_MESSAGE_CONTENT)
+            response_text = long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT)).text
             assert response_text and len(response_text.strip()) > 0, \
                 "웹 검색 후 AI 응답 텍스트가 출력되지 않았습니다."
             logger.info(f"AI 응답 출력 확인 완료: '{response_text[:80]}...'")
