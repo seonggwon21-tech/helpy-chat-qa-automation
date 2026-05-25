@@ -1,7 +1,19 @@
 pipeline {
     agent any
 
+    environment {
+        AUTH_TOKEN   = credentials('AUTH_TOKEN')
+        BASE_API_URL = 'https://api-community.elice.io'
+    }
+
     stages {
+        stage('초기화') {
+            steps {
+                bat 'if exist allure-results rmdir /s /q allure-results'
+                bat 'if exist reports rmdir /s /q reports'
+            }
+        }
+
         stage('체크아웃') {
             steps {
                 checkout scm
@@ -16,14 +28,21 @@ pipeline {
 
         stage('UI 테스트 실행') {
             steps {
-                bat 'C:\\Python314\\python.exe -m pytest -m ui --tb=short -v --junitxml=result.xml'
+                bat 'C:\\Python314\\python.exe -m pytest -m "ui and not slow" --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results'
+            }
+        }
+
+        stage('API 테스트 실행') {
+            steps {
+                bat 'C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
             }
         }
     }
 
     post {
         always {
-            junit 'result.xml'
+            junit 'result-ui.xml, result-api.xml'
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
         }
         failure {
             echo '테스트 실패 - reports/screenshots 폴더에서 스크린샷 확인'
