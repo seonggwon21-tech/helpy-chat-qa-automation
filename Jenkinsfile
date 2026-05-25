@@ -16,14 +16,26 @@ pipeline {
 
         stage('UI 테스트 실행') {
             steps {
-                bat 'C:\\Python314\\python.exe -m pytest -m ui --tb=short -v --junitxml=result.xml'
+                bat 'C:\\Python314\\python.exe -m pytest -m ui --tb=short -v --junitxml=result-ui.xml --alluredir=allure-results'
+            }
+        }
+
+        stage('API 테스트 실행') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AUTH_TOKEN',   variable: 'AUTH_TOKEN'),
+                    string(credentialsId: 'BASE_API_URL', variable: 'BASE_API_URL')
+                ]) {
+                    bat 'C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
+                }
             }
         }
     }
 
     post {
         always {
-            junit 'result.xml'
+            junit 'result-ui.xml, result-api.xml'
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
         }
         failure {
             echo '테스트 실패 - reports/screenshots 폴더에서 스크린샷 확인'
