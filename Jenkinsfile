@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        AUTH_TOKEN   = credentials('AUTH_TOKEN')
+        BASE_API_URL = credentials('BASE_API_URL')
+    }
+
     stages {
         stage('체크아웃') {
             steps {
@@ -22,11 +27,7 @@ pipeline {
 
         stage('API 테스트 실행') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AUTH_TOKEN', variable: 'AUTH_TOKEN')
-                ]) {
-                    bat 'set BASE_API_URL=https://api-community.elice.io && C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
-                }
+                bat 'C:\\Python314\\python.exe -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results'
             }
         }
     }
