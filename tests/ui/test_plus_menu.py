@@ -19,20 +19,6 @@ from pages.chat_page import ChatPage
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.ui
 
-PLUS_BUTTON       = (By.CSS_SELECTOR, "button:has([data-testid='plusIcon'])")
-MENU_FILE_UPLOAD  = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='paperclipIcon'])")
-MENU_IMAGE_CREATE = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='imageIcon'])")
-MENU_PPT_CREATE   = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='presentation-screenIcon'])")
-MENU_WEB_SEARCH   = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='magnifying-glassIcon'])")
-
-FILE_INPUT        = (By.CSS_SELECTOR, "input[type='file']")
-FILE_CHIP         = (By.XPATH, "//*[contains(text(),'test_upload') or contains(@title,'test_upload') or contains(@aria-label,'test_upload') or contains(@data-name,'test_upload')]")
-
-IMAGE_IN_RESPONSE = (By.CSS_SELECTOR, "div.elice-aichat__markdown img")
-
-PPT_RESULT        = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
-PPT_DOWNLOAD_BTN  = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
-
 DUMMY_FILE    = Path(__file__).resolve().parents[2] / "test_data" / "test_upload.txt"
 DOWNLOAD_DIR  = Path(os.getenv("DOWNLOAD_DIR", str(Path.home() / "Downloads")))
 BUG_EVIDENCE  = Path(__file__).resolve().parents[2] / "docs" / "bugs" / "TC_009"
@@ -49,15 +35,15 @@ class TestPlusButtonMenu:
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
 
         with allure.step("[TC_007] + 버튼 클릭"):
-            chat_page.click(PLUS_BUTTON)
+            chat_page.click(chat_page.PLUS_BUTTON)
             logger.info("+ 버튼 클릭 완료")
 
         with allure.step("[TC_007] 4종 메뉴 전체 노출 확인"):
             menus = [
-                ("파일 업로드", MENU_FILE_UPLOAD),
-                ("이미지 생성", MENU_IMAGE_CREATE),
-                ("PPT 생성",   MENU_PPT_CREATE),
-                ("웹 검색",    MENU_WEB_SEARCH),
+                ("파일 업로드", chat_page.MENU_FILE_UPLOAD),
+                ("이미지 생성", chat_page.MENU_IMAGE_CREATE),
+                ("PPT 생성",   chat_page.MENU_PPT_CREATE),
+                ("웹 검색",    chat_page.MENU_WEB_SEARCH),
             ]
             for label, locator in menus:
                 element = chat_page.wait_for_visible(locator)
@@ -72,17 +58,17 @@ class TestPlusButtonMenu:
         assert DUMMY_FILE.exists(), f"더미 파일이 존재하지 않습니다: {DUMMY_FILE}"
 
         with allure.step("[TC_008] + 버튼 클릭 후 파일 업로드 메뉴 선택"):
-            chat_page.click(PLUS_BUTTON)
-            chat_page.click(MENU_FILE_UPLOAD)
+            chat_page.click(chat_page.PLUS_BUTTON)
+            chat_page.click(chat_page.MENU_FILE_UPLOAD)
             logger.info("파일 업로드 메뉴 클릭 완료")
 
         with allure.step("[TC_008] 숨겨진 file input에 파일 경로 전달"):
-            file_input = chat_page.wait.until(EC.presence_of_element_located(FILE_INPUT))
+            file_input = chat_page.wait.until(EC.presence_of_element_located(chat_page.FILE_INPUT))
             file_input.send_keys(str(DUMMY_FILE))
             logger.info(f"파일 경로 전달 완료: {DUMMY_FILE.name}")
 
         with allure.step("[TC_008] 첨부 칩 노출 확인"):
-            chip = chat_page.wait_for_visible(FILE_CHIP)
+            chip = chat_page.wait_for_visible(chat_page.FILE_CHIP)
             assert chip.is_displayed(), "파일 첨부 후 입력창 영역에 첨부 칩이 노출되지 않았습니다."
             logger.info("파일 첨부 칩 노출 확인 완료")
 
@@ -112,8 +98,8 @@ class TestPlusButtonMenu:
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
 
         with allure.step("[TC_009] + 버튼 클릭 후 이미지 생성 메뉴 선택"):
-            chat_page.click(PLUS_BUTTON)
-            chat_page.click(MENU_IMAGE_CREATE)
+            chat_page.click(chat_page.PLUS_BUTTON)
+            chat_page.click(chat_page.MENU_IMAGE_CREATE)
             logger.info("이미지 생성 메뉴 클릭 완료")
 
         with allure.step("[TC_009] 이미지 생성 프롬프트 입력 후 전송"):
@@ -122,7 +108,7 @@ class TestPlusButtonMenu:
             logger.info("이미지 생성 프롬프트 전송 완료")
 
         with allure.step("[TC_009] AI 응답 이미지 노출 확인"):
-            image_element = long_wait.until(EC.visibility_of_element_located(IMAGE_IN_RESPONSE))
+            image_element = long_wait.until(EC.visibility_of_element_located(chat_page.IMAGE_IN_RESPONSE))
             assert image_element.is_displayed(), "이미지 생성 응답에 이미지 요소가 노출되지 않았습니다."
             src = image_element.get_attribute("src")
             assert src, "이미지 src 속성이 비어있습니다."
@@ -161,8 +147,8 @@ class TestPlusButtonMenu:
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
 
         with allure.step("[TC_010] + 버튼 클릭 후 PPT 생성 메뉴 선택"):
-            chat_page.click(PLUS_BUTTON)
-            chat_page.click(MENU_PPT_CREATE)
+            chat_page.click(chat_page.PLUS_BUTTON)
+            chat_page.click(chat_page.MENU_PPT_CREATE)
             logger.info("PPT 생성 메뉴 클릭 완료")
 
         with allure.step("[TC_010] 입력창에 PPT 생성 모드 칩 노출 확인"):
@@ -176,7 +162,7 @@ class TestPlusButtonMenu:
             logger.info("PPT 생성 프롬프트 전송 완료")
 
         with allure.step("[TC_010] PPT 결과 노출 확인 (최대 600초 대기)"):
-            ppt_result = long_wait.until(EC.visibility_of_element_located(PPT_RESULT))
+            ppt_result = long_wait.until(EC.visibility_of_element_located(chat_page.PPT_RESULT))
             assert ppt_result.is_displayed(), "PPT 생성 후 결과 요소가 화면에 노출되지 않았습니다."
             logger.info("PPT 결과 노출 확인 완료")
 
@@ -184,7 +170,7 @@ class TestPlusButtonMenu:
             assert DOWNLOAD_DIR.exists(), f"DOWNLOAD_DIR 경로가 존재하지 않습니다: {DOWNLOAD_DIR}"
             before_count = len(list(DOWNLOAD_DIR.iterdir()))
 
-            download_btn = long_wait.until(EC.element_to_be_clickable(PPT_DOWNLOAD_BTN))
+            download_btn = long_wait.until(EC.element_to_be_clickable(chat_page.PPT_DOWNLOAD_BTN))
             authenticated_driver.execute_script("arguments[0].scrollIntoView({block:'center'});", download_btn)
             time.sleep(0.3)
             download_btn.click()
@@ -210,8 +196,8 @@ class TestPlusButtonMenu:
         chat_page.click(chat_page.NEW_CHAT_BUTTON)
 
         with allure.step("[TC_011] + 버튼 클릭 후 웹 검색 메뉴 선택"):
-            long_wait.until(EC.element_to_be_clickable(PLUS_BUTTON)).click()
-            long_wait.until(EC.visibility_of_element_located(MENU_WEB_SEARCH)).click()
+            long_wait.until(EC.element_to_be_clickable(chat_page.PLUS_BUTTON)).click()
+            long_wait.until(EC.visibility_of_element_located(chat_page.MENU_WEB_SEARCH)).click()
             logger.info("웹 검색 메뉴 클릭 완료")
 
         with allure.step("[TC_011] 검색어 입력 후 전송"):

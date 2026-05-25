@@ -6,7 +6,6 @@
 import logging
 import pytest
 import allure
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,10 +13,6 @@ from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.ui
-
-LNB_MORE_BUTTON = (By.XPATH, "//button[.//*[@data-testid='ellipsis-verticalIcon']]")
-LNB_DELETE_BUTTON = (By.XPATH, "//li[@role='menuitem'][.//*[@data-testid='trashIcon']]")
-CONFIRM_DELETE_BUTTON = (By.CSS_SELECTOR, "div.MuiDialogActions-root button.MuiButton-colorError")
 
 
 @allure.epic("AI Helpy Chat")
@@ -83,9 +78,9 @@ class TestLnbManagement:
 
             # hover → more 버튼 노출 → 클릭
             ActionChains(authenticated_driver).move_to_element(current_items[0]).perform()
-            chat_page.click(LNB_MORE_BUTTON)
-            chat_page.click(LNB_DELETE_BUTTON)
-            chat_page.click(CONFIRM_DELETE_BUTTON)
+            chat_page.click(chat_page.LNB_MORE_BUTTON)
+            chat_page.click(chat_page.LNB_DELETE_BUTTON)
+            chat_page.click(chat_page.CONFIRM_DELETE_BUTTON)
 
             # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load로 항목 보충 시 카운트 오차 방지)
             chat_page.wait.until(

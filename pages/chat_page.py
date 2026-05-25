@@ -19,6 +19,23 @@ class ChatPage(BasePage):
     AI_MESSAGE_CONTENT = (By.CSS_SELECTOR, "div.elice-aichat__markdown[data-status='complete']")
     CHAT_MESSAGE_ELEMENTS = (By.CSS_SELECTOR, "div.elice-aichat__markdown")
 
+    # + 버튼 메뉴
+    PLUS_BUTTON       = (By.CSS_SELECTOR, "button:has([data-testid='plusIcon'])")
+    MENU_FILE_UPLOAD  = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='paperclipIcon'])")
+    MENU_IMAGE_CREATE = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='imageIcon'])")
+    MENU_PPT_CREATE   = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='presentation-screenIcon'])")
+    MENU_WEB_SEARCH   = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='magnifying-glassIcon'])")
+    FILE_INPUT        = (By.CSS_SELECTOR, "input[type='file']")
+    FILE_CHIP         = (By.XPATH, "//*[contains(text(),'test_upload') or contains(@title,'test_upload') or contains(@aria-label,'test_upload') or contains(@data-name,'test_upload')]")
+    IMAGE_IN_RESPONSE = (By.CSS_SELECTOR, "div.elice-aichat__markdown img")
+    PPT_RESULT        = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
+    PPT_DOWNLOAD_BTN  = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
+
+    # LNB 대화 목록 관리
+    LNB_MORE_BUTTON       = (By.XPATH, "//button[.//*[@data-testid='ellipsis-verticalIcon']]")
+    LNB_DELETE_BUTTON     = (By.XPATH, "//li[@role='menuitem'][.//*[@data-testid='trashIcon']]")
+    CONFIRM_DELETE_BUTTON = (By.CSS_SELECTOR, "div.MuiDialogActions-root button.MuiButton-colorError")
+
     def __init__(self, driver: WebDriver):
         super().__init__(driver)
 
