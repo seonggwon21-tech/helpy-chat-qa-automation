@@ -135,16 +135,12 @@ cp .env.example .env
 ```
 
 ```env
-# UI 테스트용 계정
+# UI 테스트 및 API 인증 공통 계정 (로그인 API로 토큰 자동 발급)
 TEST_USER_ID=your_email@example.com
 TEST_USER_PW=your_password
 
-# API 테스트용 Bearer 토큰
-AUTH_TOKEN=Bearer your_token_here
-
 # API 엔드포인트
 BASE_API_URL=https://your-api-domain.com
-AUTH_API_URL=https://your-auth-domain.com
 
 # 파일 다운로드 경로 (미설정 시 ~/Downloads 사용)
 DOWNLOAD_DIR=/path/to/download/directory
