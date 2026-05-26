@@ -93,11 +93,29 @@ def driver():
 # =========================================================
 @pytest.fixture(scope="session")
 def auth_token():
-    """API 인증용 Bearer 토큰을 .env에서 직접 로드. Bearer 접두사는 자동 제거."""
+    """로그인 API로 Bearer 토큰 자동 발급. AUTH_TOKEN 환경변수가 있으면 그것을 우선 사용."""
     token = os.getenv("AUTH_TOKEN")
+    if token:
+        return token.removeprefix("Bearer ").strip()
+
+    login_id = os.getenv("TEST_USER_ID")
+    password = os.getenv("TEST_USER_PW")
+    if not login_id or not password:
+        pytest.fail("AUTH_TOKEN 또는 TEST_USER_ID/TEST_USER_PW가 .env에 설정되지 않았습니다.")
+
+    response = requests.post(
+        "https://api-account.elice.io/login/otp",
+        json={"login_id": login_id, "password": password},
+        headers={"Content-Type": "application/json"},
+        timeout=30,
+    )
+    if response.status_code != 200:
+        pytest.fail(f"로그인 API 실패. 상태 코드: {response.status_code}, 응답: {response.text}")
+
+    token = response.json().get("access_token")
     if not token:
-        pytest.fail("AUTH_TOKEN이 .env에 설정되지 않았습니다.")
-    return token.removeprefix("Bearer ").strip()
+        pytest.fail(f"로그인 응답에 access_token이 없습니다. 응답: {response.text}")
+    return token
 
 
 @pytest.fixture(scope="function")

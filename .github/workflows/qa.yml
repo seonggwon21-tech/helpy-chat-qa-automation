@@ -22,7 +22,8 @@ jobs:
 
       - name: Run API tests
         env:
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+          TEST_USER_PW: ${{ secrets.TEST_USER_PW }}
           BASE_API_URL: ${{ secrets.BASE_API_URL }}
         run: python -m pytest -m api --tb=short -v --junitxml=result-api.xml --alluredir=allure-results
 
