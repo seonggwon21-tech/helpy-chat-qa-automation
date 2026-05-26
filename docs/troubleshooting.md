@@ -262,3 +262,36 @@ after_refresh_hrefs = set(authenticated_driver.execute_script(
     "return Array.from(document.querySelectorAll('a[href*=\"/ai-helpy-chat/chats/\"]')).map(e => e.href)"
 ))
 ```
+
+---
+
+## 13. AUTH_TOKEN 만료 — CI 실행마다 수동 갱신 필요
+
+**현상**  
+GitHub Actions API 테스트가 매일 `409` 오류로 실패.  
+원인을 추적하니 `.env` 및 GitHub Secrets에 등록한 `AUTH_TOKEN`이 약 24시간 후 만료되는 세션 토큰이었음.
+
+**배경**  
+트러블슈팅 #1에서 `/login/otp` 엔드포인트 호출 시 `422` 오류가 발생해 자동 로그인을 포기하고 수동 토큰 방식으로 전환했었음.  
+그러나 CI 환경에서 매번 토큰을 갱신하는 건 지속 불가능한 방식임을 운영 중에 확인.
+
+**원인 재분석**  
+브라우저 Network 탭으로 실제 로그인 요청을 캡처한 결과, `/login/otp` 엔드포인트가 `login_id` + `password` 필드만으로 정상 동작하는 것을 확인.  
+기존 422 오류는 요청 body 구조가 잘못됐던 것이 원인이었음.
+
+**해결**  
+`auth_token` fixture를 자동 발급 방식으로 재구현.  
+`TEST_USER_ID` / `TEST_USER_PW`로 로그인 API를 호출해 `access_token`을 발급받아 사용.  
+기존 `AUTH_TOKEN` 환경변수가 있으면 우선 사용하는 fallback 구조도 유지.
+
+```python
+response = requests.post(
+    "https://api-account.elice.io/login/otp",
+    json={"login_id": login_id, "password": password},
+    headers={"Content-Type": "application/json"},
+    timeout=30,
+)
+token = response.json().get("access_token")
+```
+
+이로써 GitHub Secrets에 `TEST_USER_ID` / `TEST_USER_PW`만 등록하면 토큰 갱신 없이 CI가 영구적으로 동작함.
