@@ -5,6 +5,8 @@
 import allure
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from .base_page import BasePage
 
@@ -46,6 +48,7 @@ class ChatPage(BasePage):
         self.click(self.SEND_BUTTON)
 
     @allure.step("AI 생성 완료 응답 대기 및 텍스트 추출")
-    def wait_for_ai_response(self) -> str:
+    def wait_for_ai_response(self, timeout: int = 60) -> str:
         """AI의 응답이 화면에 완전히 노출될 때까지 대기하고 해당 텍스트를 반환합니다."""
-        return self.get_text(self.AI_MESSAGE_CONTENT)
+        ai_wait = WebDriverWait(self.driver, timeout)
+        return ai_wait.until(EC.visibility_of_element_located(self.AI_MESSAGE_CONTENT)).text
