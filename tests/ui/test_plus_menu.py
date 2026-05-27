@@ -69,7 +69,8 @@ class TestPlusButtonMenu:
             logger.info(f"파일 경로 전달 완료: {DUMMY_FILE.name}")
 
         with allure.step("[TC_008] 첨부 칩 노출 확인"):
-            chip = chat_page.wait_for_visible(chat_page.FILE_CHIP)
+            file_chip_locator = chat_page.get_file_chip_locator(DUMMY_FILE.name)
+            chip = chat_page.wait_for_visible(file_chip_locator)
             assert chip.is_displayed(), "파일 첨부 후 입력창 영역에 첨부 칩이 노출되지 않았습니다."
             logger.info("파일 첨부 칩 노출 확인 완료")
 

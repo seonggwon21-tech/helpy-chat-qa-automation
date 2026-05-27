@@ -63,7 +63,7 @@ class TestAgentAPI:
 
 @allure.epic("AI Helpy Chat API")
 @allure.feature("인증")
-@allure.story("미인증 접근 거부 검증")
+@allure.story("TS-006 · 에이전트 API & 인증 검증 — 미인증/만료 토큰 음성 케이스")
 class TestChatroomAuth:
 
     @allure.title("인증 헤더 없이 요청 시 401 또는 403 반환 확인")

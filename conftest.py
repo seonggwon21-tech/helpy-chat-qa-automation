@@ -6,6 +6,7 @@ WebDriver 초기화, 공통 환경 변수 관리 담당.
 import json
 import os
 import platform
+import subprocess
 import sys
 import time
 import pytest
@@ -16,10 +17,12 @@ from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from pages.login_page import LoginPage
 from pages.signup_page import SignupPage
-from config.config import BASE_UI_URL, BASE_API_URL, TEST_USER, DEFAULT_API_TIMEOUT
+from config.config import BASE_UI_URL, BASE_API_URL, TEST_USER, DEFAULT_API_TIMEOUT, DEFAULT_WAIT_TIME
 from utils.logger import get_custom_logger
 
 load_dotenv()
@@ -30,12 +33,25 @@ AUTH_API_URL = os.getenv("AUTH_API_URL", "")
 
 
 def pytest_sessionstart(session):
+    # CI 환경 여부 판단
+    is_ci = bool(os.getenv("JENKINS_HOME") or os.getenv("CI"))
+
+    # Git 커밋 해시 (CI 파이프라인에서 회귀 추적용)
+    try:
+        git_commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        git_commit = "N/A"
+
     props = [
         f"Python={sys.version.split()[0]}",
         f"OS={platform.system()} {platform.release()}",
         f"Browser=Chrome",
         f"Target.URL={BASE_UI_URL}",
-        f"Environment=Local",
+        f"Environment={'CI' if is_ci else 'Local'}",
+        f"Build.Number={os.getenv('BUILD_NUMBER', 'local')}",
+        f"Git.Commit={git_commit}",
     ]
     Path("allure-results").mkdir(exist_ok=True)
     Path("allure-results/environment.properties").write_text("\n".join(props), encoding="utf-8")
@@ -104,7 +120,7 @@ def auth_token():
         pytest.fail("AUTH_TOKEN 또는 TEST_USER_ID/TEST_USER_PW가 .env에 설정되지 않았습니다.")
 
     response = requests.post(
-        "https://api-account.elice.io/login/otp",
+        AUTH_API_URL or "https://api-account.elice.io/login/otp",
         json={"login_id": login_id, "password": password},
         headers={"Content-Type": "application/json"},
         timeout=30,
@@ -112,9 +128,11 @@ def auth_token():
     if response.status_code != 200:
         pytest.fail(f"로그인 API 실패. 상태 코드: {response.status_code}, 응답: {response.text}")
 
-    token = response.json().get("access_token")
+    body = response.json()
+    # 응답 키 이름이 변경될 경우를 대비해 복수 후보를 순서대로 시도
+    token = body.get("access_token") or body.get("token") or body.get("accessToken")
     if not token:
-        pytest.fail(f"로그인 응답에 access_token이 없습니다. 응답: {response.text}")
+        pytest.fail(f"로그인 응답에 토큰 키(access_token/token/accessToken)가 없습니다. 응답: {response.text}")
     return token
 
 
@@ -156,8 +174,8 @@ def test_user():
 def authenticated_driver(driver, base_url, test_user):
     """UI 로그인이 완료된 상태의 WebDriver를 제공. 쿠키 캐싱으로 재로그인 최소화."""
     login_page = LoginPage(driver, base_url)
-
     chat_url = f"{base_url}/ai-helpy-chat"
+    using_cache = False
 
     cached_cookies = _load_cached_cookies()
     if cached_cookies:
@@ -179,10 +197,9 @@ def authenticated_driver(driver, base_url, test_user):
             except Exception:
                 pass
         driver.get(chat_url)
+        using_cache = True
         logger.info("캐시된 쿠키로 로그인 세션 복원 완료")
     else:
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
         signup_page = SignupPage(driver)
         login_page.open()
         login_page.login(test_user["id"], test_user["pw"])
@@ -199,7 +216,18 @@ def authenticated_driver(driver, base_url, test_user):
         logger.info(f"UI 로그인 완료 및 쿠키 캐시 저장 (현재 URL: {driver.current_url})")
         driver.get(chat_url)
 
-    if not login_page.is_login_successful():
+    # 캐시 복원 경로: 채팅 URL 진입 여부만 확인 (LoginPage 로케이터 의존성 제거)
+    # 신규 로그인 경로: PersonIcon 포함 전체 검증으로 로그인 완료를 확실히 판단
+    if using_cache:
+        try:
+            WebDriverWait(driver, DEFAULT_WAIT_TIME).until(EC.url_contains("ai-helpy-chat"))
+            login_ok = True
+        except TimeoutException:
+            login_ok = False
+    else:
+        login_ok = login_page.is_login_successful()
+
+    if not login_ok:
         os.makedirs("reports/screenshots", exist_ok=True)
         driver.save_screenshot("reports/screenshots/fixture_login_failed.png")
         logger.error(f"로그인 실패 시점 URL: {driver.current_url}")
@@ -208,6 +236,29 @@ def authenticated_driver(driver, base_url, test_user):
             logger.info("만료된 쿠키 캐시 삭제 완료")
         pytest.fail("Fixture 사전 조건 설정 실패: 로그인 불가")
     return driver
+
+
+# =========================================================
+# [5-2] 사전 대화가 생성된 상태의 ChatPage 제공 Fixture
+# =========================================================
+@pytest.fixture(scope="function")
+def seeded_chat(authenticated_driver):
+    """사전 대화 1개가 생성된 ChatPage 인스턴스를 반환합니다.
+
+    '기존 대화가 있는 상태'를 전제로 하는 테스트 케이스에서 재사용 가능합니다.
+    사전 준비 로직을 테스트 본문에서 분리해 TC 핵심 시나리오에 집중하도록 돕습니다.
+
+    Usage:
+        def test_something(self, seeded_chat):
+            chat_page = seeded_chat
+            driver = seeded_chat.driver
+    """
+    from pages.chat_page import ChatPage
+    chat_page = ChatPage(authenticated_driver)
+    chat_page.send_message("안녕하세요, 대화 보존 테스트입니다.")
+    chat_page.wait_for_ai_response()
+    logger.info("seeded_chat: 사전 대화 생성 완료")
+    return chat_page
 
 
 # =========================================================

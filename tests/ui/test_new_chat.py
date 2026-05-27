@@ -7,7 +7,6 @@ import logging
 import pytest
 import allure
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.ui
@@ -19,13 +18,10 @@ pytestmark = pytest.mark.ui
 class TestNewChatAndHistory:
 
     @allure.title("새 대화 버튼 클릭 후 화면 초기화 및 기존 대화 LNB 보존·복원 확인")
-    def test_new_chat_and_history_preserved(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
-
-        # 사전 준비: 기존 대화 1개 생성
-        chat_page.send_message("안녕하세요, 대화 보존 테스트입니다.")
-        chat_page.wait_for_ai_response()
-        logger.info("사전 대화 생성 완료")
+    def test_new_chat_and_history_preserved(self, seeded_chat):
+        # seeded_chat fixture가 사전 대화 생성을 담당 → 테스트 본문은 TC 검증에 집중
+        chat_page = seeded_chat
+        authenticated_driver = seeded_chat.driver
 
         current_url = authenticated_driver.current_url
 

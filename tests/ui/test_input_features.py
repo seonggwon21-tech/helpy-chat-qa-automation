@@ -4,6 +4,7 @@
 """
 
 import logging
+import time
 import pytest
 import allure
 from selenium.webdriver.common.keys import Keys
@@ -42,6 +43,9 @@ class TestInputFeatures:
             input_value = input_element.get_attribute("value")
             assert "\n" in input_value, f"줄바꿈이 적용되지 않았습니다. value: '{input_value}'"
 
+            # AI 응답은 비동기이므로 잠시 대기 후 응답 노드가 없음을 확인
+            # (즉각적인 find_elements는 비동기 렌더링 직전에 조회할 경우 false-negative 가능)
+            time.sleep(2)
             ai_messages = authenticated_driver.find_elements(*chat_page.CHAT_MESSAGE_ELEMENTS)
             assert len(ai_messages) == 0, \
                 f"Shift+Enter 입력 후 메시지가 전송되었습니다. AI 응답 요소 수: {len(ai_messages)}"

@@ -1,5 +1,5 @@
 """
-로그인 페이지(POM)의 핵심 검증 전략
+AI Helpy Chat 로그인 페이지(POM) — 검증 전략 및 SSO 로그인 흐름 정의
 """
 
 import allure
@@ -11,7 +11,7 @@ from .base_page import BasePage
 
 
 class LoginPage(BasePage):
-    """포피싱 로그인 화면 조작 및 검증 클래스"""
+    """AI Helpy Chat 로그인 화면 조작 및 검증 클래스"""
 
     LOGIN_ID_INPUT = (By.CSS_SELECTOR, "input[type='email']")
     PASSWORD_INPUT = (By.CSS_SELECTOR, "input[type='password']")
