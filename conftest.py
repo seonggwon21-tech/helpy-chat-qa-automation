@@ -9,20 +9,21 @@ import platform
 import subprocess
 import sys
 import time
-import pytest
-import allure
-import requests
 from pathlib import Path
+
+import allure
+import pytest
+import requests
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
+from config.config import BASE_API_URL, BASE_UI_URL, DEFAULT_WAIT_TIME, TEST_USER
 from pages.login_page import LoginPage
 from pages.signup_page import SignupPage
-from config.config import BASE_UI_URL, BASE_API_URL, TEST_USER, DEFAULT_API_TIMEOUT, DEFAULT_WAIT_TIME
 from utils.logger import get_custom_logger
 
 load_dotenv()
@@ -45,7 +46,7 @@ def pytest_sessionstart(session):
     props = [
         f"Python={sys.version.split()[0]}",
         f"OS={platform.system()} {platform.release()}",
-        f"Browser=Chrome",
+        "Browser=Chrome",
         f"Target.URL={BASE_UI_URL}",
         f"Environment={'CI' if is_ci else 'Local'}",
         f"Build.Number={os.getenv('BUILD_NUMBER', 'local')}",

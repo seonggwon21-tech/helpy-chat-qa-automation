@@ -1,7 +1,8 @@
 """+ 버튼 메뉴 컴포넌트 — 파일 업로드·이미지·PPT·웹 검색 메뉴를 담당."""
 
-import allure
 from pathlib import PurePosixPath
+
+import allure
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 

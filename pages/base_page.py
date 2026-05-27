@@ -3,17 +3,17 @@
 공통 동작(클릭, 입력, 텍스트 추출 등)과 명시적 대기를 캡슐화합니다.
 """
 
-import time
 import logging
+import time
 
 import allure
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     StaleElementReferenceException,
 )
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from config.config import DEFAULT_WAIT_TIME
 

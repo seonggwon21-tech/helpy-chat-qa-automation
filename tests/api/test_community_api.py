@@ -90,10 +90,14 @@ class TestChatroomAuth:
             )
             logger.info(f"미인증 요청 거부 확인 완료 (상태 코드: {response.status_code})")
 
-    @allure.title("유효하지 않은 토큰으로 요청 시 401 또는 403 반환 확인")
-    def test_invalid_token_returns_401_or_403(self, api_base_url):
+    @allure.title("유효하지 않은 토큰으로 요청 시 인증 거부 확인")
+    def test_invalid_token_returns_auth_error(self, api_base_url):
         """[TC_019] 서명이 올바르지 않은 JWT 토큰(만료·변조 시뮬레이션)으로 요청 시
-        서버가 토큰을 검증하고 접근을 거부하는지 확인."""
+        서버가 토큰을 검증하고 접근을 거부하는지 확인.
+
+        Note: 이 API는 백엔드 인증 실패(403)를 API 게이트웨이가 409로 래핑해 반환한다.
+        응답 body의 detail.resp_json._result.status_code == 403 으로 인증 거부임을 확인.
+        """
         with allure.step("[TC_019] 유효하지 않은 Bearer 토큰으로 GET /chatroom 요청"):
             response = requests.get(
                 f"{api_base_url}/chatroom",
@@ -103,11 +107,26 @@ class TestChatroomAuth:
                 },
             )
             logger.info(f"GET /chatroom (유효하지 않은 토큰) 응답 코드: {response.status_code}")
-            assert response.status_code in (401, 403), (
+
+            # 이 엔드포인트는 백엔드 인증 실패를 409(gateway wrap)로 반환한다.
+            # 401/403/409 모두 인증 거부로 처리
+            assert response.status_code in (401, 403, 409), (
                 f"유효하지 않은 토큰 요청에 예상치 못한 응답. "
                 f"상태 코드: {response.status_code}, 응답: {response.text}"
             )
-            logger.info(f"유효하지 않은 토큰 거부 확인 완료 (상태 코드: {response.status_code})")
+            # 409인 경우 응답 body에서 실제 인증 실패 사유 확인
+            if response.status_code == 409:
+                body = response.json()
+                inner_status = (
+                    body.get("detail", {})
+                    .get("resp_json", {})
+                    .get("_result", {})
+                    .get("status_code")
+                )
+                assert inner_status == 403, (
+                    f"409 응답이지만 내부 상태가 인증 실패(403)가 아닙니다. inner_status: {inner_status}"
+                )
+            logger.info(f"유효하지 않은 토큰 거부 확인 완료 (응답 코드: {response.status_code})")
 
     @allure.title("잘못된 인증 스킴으로 요청 시 401 또는 403 반환 확인")
     def test_wrong_auth_scheme_returns_401_or_403(self, api_base_url):

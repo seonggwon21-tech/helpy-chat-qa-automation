@@ -3,9 +3,9 @@ AI Helpy Chat 로그인 페이지(POM) — 검증 전략 및 SSO 로그인 흐�
 """
 
 import allure
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.common.exceptions import TimeoutException
 
 from .base_page import BasePage
 
