@@ -6,6 +6,7 @@
 ![pytest](https://img.shields.io/badge/pytest-8.x-0A9EDC?logo=pytest&logoColor=white)
 ![Selenium](https://img.shields.io/badge/Selenium-4.x-43B02A?logo=selenium&logoColor=white)
 ![Allure](https://img.shields.io/badge/Allure-Report-FF6B6B?logo=qameta&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-Lint-D7FF64?logo=ruff&logoColor=black)
 ![Jenkins](https://img.shields.io/badge/Jenkins-CI-D24939?logo=jenkins&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
@@ -43,7 +44,7 @@
 
 엘리스(Elice)의 AI 어시스턴트 서비스인 **AI Helpy Chat**(`qaproject.elice.io/ai-helpy-chat`)을 대상으로 한 엔드 투 엔드 QA 자동화 포트폴리오입니다. 메시지 송수신, 입력 인터랙션, 새 대화 관리, 플러스 메뉴(파일 첨부/다운로드), LNB(좌측 네비게이션) 동작 등 핵심 사용자 시나리오를 UI 자동화로 검증하고, 동시에 에이전트 CRUD API를 별도 트랙으로 검증해 **UI · API 듀얼 트랙 회귀 안전망**을 구성했습니다.
 
-단순 자동화 스크립트가 아니라 **POM 계층화, fixture scope 트레이드오프 분리, CDP 기반 쿠키 캐싱을 통한 SSO 비용 절감, 실패 자동 진단(스크린샷 + Allure 첨부), CI headless 통합, 알려진 버그의 xfail 추적**까지 갖춘 실무형 프레임워크를 목표로 설계했습니다.
+단순 자동화 스크립트가 아니라 **Component Object Pattern, POM 계층화, fixture scope 트레이드오프 분리, CDP 기반 쿠키 캐싱을 통한 SSO 비용 절감, 실패 자동 진단(스크린샷 + Allure 첨부), Ruff 정적 분석 CI 연동, 인증 음성(negative) 케이스 검증, 알려진 버그의 xfail 추적**까지 갖춘 실무형 프레임워크를 목표로 설계했습니다.
 
 ---
 
@@ -53,11 +54,12 @@
 |---|---|---|
 | 언어 | Python 3.14 | 표준 라이브러리만으로 fixture 캐시·CDP 통신 구현 |
 | UI 자동화 | Selenium 4 + CDP | `execute_cdp_cmd("Network.setCookie")`로 도메인 진입 전에도 쿠키 주입 → SSO 리다이렉트 우회 |
-| API 자동화 | requests | `Session` 객체로 헤더·연결 풀 재사용, OTP 로그인 API에서 토큰 자동 발급 |
+| API 자동화 | requests | `Session` 객체로 헤더·연결 풀 재사용, 인증 음성(negative) 케이스 포함 |
 | 테스트 프레임워크 | pytest 8.x | fixture scope(`session`/`function`) 분리, marker 기반 슬라이스(`ui`/`api`/`slow`), `makereport` hook 확장 |
 | 리포팅 | Allure Report | epic/feature/story/step 4계층 + 환경 정보·실패 스크린샷 자동 첨부로 비기술 이해관계자도 읽는 리포트 |
-| 설계 패턴 | Page Object Model | UI 동작과 테스트 로직을 분리해 로케이터 변경 시 단일 지점만 수정 |
-| CI/CD | Jenkins + GitHub Actions | Jenkins: UI·API 분리 실행 + Allure publish / GHA: push/PR 시 API 테스트 자동화 |
+| 설계 패턴 | Page Object Model + Component Object Pattern | POM으로 UI 동작과 테스트 로직을 분리하고, COP로 ChatPage를 역할별 컴포넌트(ChatInput · PlusMenu · Lnb)로 세분화 |
+| 정적 분석 | Ruff | import 정렬·미사용 변수·f-string 등 코드 품질 자동 검사, CI Lint job으로 push마다 실행 |
+| CI/CD | Jenkins + GitHub Actions | Jenkins: UI·API 분리 실행 + Allure publish / GHA: Lint → API Tests → UI Tests 3-job 파이프라인 |
 | 환경 관리 | python-dotenv | `.env`로 자격증명·URL을 코드와 분리, `.gitignore` 처리 |
 | 로깅 | Python logging | 공통 로거로 테스트 흐름을 stdout에 기록, `LOG_FILE` 환경변수로 파일 로그 추가 가능 |
 
@@ -69,11 +71,15 @@
 helpy-chat-qa-automation/
 ├── config/
 │   └── config.py              # URL, 대기 시간 등 전역 상수 (BASE_UI_URL 환경변수 오버라이드 가능)
-├── pages/                     # Page Object Model
+├── pages/                     # Page Object Model + Component Object Pattern
 │   ├── base_page.py           # 방어적 클릭/입력 + @allure.step 자동 데코레이션
 │   ├── login_page.py          # SSO 로그인 흐름
 │   ├── signup_page.py         # 약관 동의 후처리
-│   └── chat_page.py           # 채팅 입력 · 플러스 메뉴 · LNB 액션
+│   ├── chat_page.py           # 파사드(Facade) — 세 컴포넌트를 조합해 노출
+│   └── components/            # Component Object Pattern
+│       ├── chat_input_component.py   # 채팅 입력·전송·AI 응답 대기
+│       ├── plus_menu_component.py    # + 버튼 메뉴(파일·이미지·PPT·웹 검색)
+│       └── lnb_component.py          # LNB 대화 목록 조회·삭제
 ├── tests/
 │   ├── ui/
 │   │   ├── test_message_send.py      # TS-001
@@ -82,7 +88,7 @@ helpy-chat-qa-automation/
 │   │   ├── test_plus_menu.py         # TS-004
 │   │   └── test_lnb_management.py   # TS-005
 │   └── api/
-│       └── test_community_api.py    # TS-006
+│       └── test_community_api.py    # TS-006 (TC_015~020, negative 케이스 포함)
 ├── test_data/
 │   └── test_upload.txt        # 파일 업로드 TC용 더미 파일
 ├── utils/
@@ -93,13 +99,16 @@ helpy-chat-qa-automation/
 │   ├── images/                # README 데모 이미지
 │   ├── test_cases.csv         # TC/TS 전체 목록
 │   ├── bug-report.md          # 발견 결함 5건
-│   └── troubleshooting.md     # 트러블슈팅 기록 (13건)
+│   └── troubleshooting.md     # 트러블슈팅 기록 (16건)
 ├── reports/                   # 실패 시 자동 저장되는 스크린샷
 ├── allure-results/            # Allure raw 데이터 (environment.properties 포함)
 ├── .github/
 │   └── workflows/
-│       └── qa.yml             # GitHub Actions (main/develop push/PR → API 테스트 자동 실행)
+│       └── qa.yml             # GitHub Actions — Lint → API Tests → UI Tests 3-job 파이프라인
 ├── conftest.py                # Fixture 정의 (WebDriver, 인증, 쿠키 캐싱, 실패 훅)
+├── ruff.toml                  # Ruff 정적 분석 설정 (E/F/W/I rules, isort)
+├── requirements.txt           # 런타임 의존성
+├── requirements-dev.txt       # 개발·CI 전용 도구 (Ruff)
 ├── Jenkinsfile
 ├── pytest.ini
 ├── .env.example               # 환경 변수 템플릿
@@ -110,7 +119,7 @@ helpy-chat-qa-automation/
 
 ## 테스트 구성
 
-UI 5개 시나리오 14개 TC + API 1개 시나리오 4개 TC, **총 18개 TC**.
+UI 5개 시나리오 14개 TC + API 1개 시나리오 6개 TC, **총 20개 TC**.
 
 | TS ID | 테스트 스위트 | TC | 설명 |
 |---|---|---|---|
@@ -118,8 +127,8 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 4개 TC, **총 18개 TC**.
 | TS-002 | 새 대화 전환 | TC_002~003 | 새 대화 클릭 후 화면 초기화 확인, LNB에서 기존 대화 복원 확인 |
 | TS-003 | 입력창 동작 | TC_004~006 | 빈 입력 차단, Shift+Enter 줄바꿈(미전송), Enter 전송 후 AI 응답 출력 |
 | TS-004 | + 버튼 메뉴 | TC_007~011 | 파일 업로드 칩 노출, 이미지·PPT 생성, 웹 검색 (**TC_009는 `xfail(strict=True)`로 버그 추적**) |
-| TS-005 | LNB 대화 목록 관리 | TC_012~014 | 가상화 환경에서 새로고침 보존·삭제·이름 변경을 href 기준으로 검증 |
-| TS-006 | 에이전트 API & 인증 | TC_015~018 | 에이전트 CRUD + 미인증/만료 토큰 음성(negative) 케이스 |
+| TS-005 | LNB 대화 목록 관리 | TC_012~014 | 가상화 환경에서 새로고침 보존·삭제를 href 기준으로 검증 |
+| TS-006 | 에이전트 API & 인증 | TC_015~020 | 에이전트 목록·수·상세 조회 + 미인증·유효하지 않은 토큰·잘못된 인증 스킴 음성(negative) 케이스 |
 
 > 전체 TC 목록: [docs/test_cases.csv](docs/test_cases.csv)  
 > `pytest -m "ui and not slow"`로 PR 단위 빠른 피드백 루프를 지원합니다.
@@ -127,6 +136,25 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 4개 TC, **총 18개 TC**.
 ---
 
 ## 주요 구현 내용
+
+### Component Object Pattern — ChatPage 역할별 분리
+
+**무엇을 했나.** 채팅 입력·플러스 메뉴·LNB 관리를 모두 담당하던 `ChatPage` 단일 클래스를 세 개의 전담 컴포넌트로 분리했습니다. `ChatPage`는 컴포넌트 인스턴스를 공개 속성으로 노출하는 **파사드(Facade)** 역할만 수행합니다.
+
+```
+ChatPage (facade)
+├── self.chat_input  → ChatInputComponent  : CHAT_INPUT, SEND_BUTTON, send_message(), wait_for_ai_response()
+├── self.plus_menu   → PlusMenuComponent   : PLUS_BUTTON, MENU_*, open_menu(), get_file_chip_locator()
+└── self.lnb         → LnbComponent        : LNB_CHAT_ITEMS, get_chat_hrefs() — JS 원자 수집
+```
+
+**왜 이 방식인가.** 기능이 추가될수록 단일 Page Object가 수백 줄이 되고 SRP(단일 책임 원칙)가 무너집니다. 컴포넌트 분리 후 각 컴포넌트는 자신의 로케이터와 액션만 책임지므로 특정 UI 영역 변경 시 해당 컴포넌트 파일만 수정하면 됩니다. `LnbComponent.get_chat_hrefs()`처럼 컴포넌트 특화 유틸리티도 자연스럽게 응집됩니다.
+
+### Ruff 정적 분석 — CI 코드 품질 자동화
+
+**무엇을 했나.** 현업 시니어 피드백("정적분석 도구만 붙여 놓으면 충분하실듯")을 반영해 GitHub Actions에 `Lint (Ruff)` job을 추가했습니다. push마다 import 정렬(isort), 미사용 변수(F401), f-string 오용(F541) 등을 자동으로 검사합니다.
+
+**왜 이 방식인가.** 정적 분석은 테스트를 실행하기 전 단계에서 명백한 코드 품질 문제를 조기에 차단합니다. flake8·black·isort를 각각 설치하는 대신 Ruff 하나로 대체해 CI 속도와 설정 파일 관리 비용을 모두 줄였습니다.
 
 ### SSO 인증 우회 — CDP 쿠키 주입 + 30분 TTL 캐싱
 
@@ -181,7 +209,7 @@ def pytest_runtest_makereport(item, call):
 
 ### fixture scope의 의식적 분리
 
-- `auth_token` → **`scope="session"`**: API 트랙 전체에서 1회 발급. `AUTH_TOKEN` 환경변수 우선, 없으면 OTP 로그인 API 폴백
+- `auth_token` → **`scope="session"`**: API 트랙 전체에서 1회 로드. GitHub Secrets의 `AUTH_TOKEN` 환경변수에서 읽어 사용
 - `api_session` → **`scope="function"`**: 테스트별 헤더·연결 격리 후 close
 - `driver` / `authenticated_driver` → **`scope="function"`**: UI 테스트 간 상태 누수 방지
 
@@ -195,6 +223,9 @@ def pytest_runtest_makereport(item, call):
 
 ```bash
 pip install -r requirements.txt
+
+# 정적 분석 도구 (선택)
+pip install -r requirements-dev.txt
 ```
 
 ### 2. 환경 변수 설정
@@ -206,11 +237,11 @@ cp .env.example .env
 ```
 
 ```env
-# UI 테스트 및 API 인증 공통 계정 (로그인 API로 토큰 자동 발급)
+# UI 테스트 계정
 TEST_USER_ID=your_email@example.com
 TEST_USER_PW=your_password
 
-# (선택) 이미 발급받은 토큰이 있다면 우선 사용
+# API 인증 토큰 (브라우저 Network 탭 Authorization 헤더에서 복사)
 AUTH_TOKEN=your_bearer_token
 
 # API 엔드포인트
@@ -231,6 +262,9 @@ pytest -m api --tb=short -v
 
 # 특정 파일 실행
 pytest tests/ui/test_message_send.py -v
+
+# 정적 분석
+ruff check .
 ```
 
 ### 4. Allure 리포트 확인
@@ -243,7 +277,7 @@ allure serve allure-results
 
 **Jenkins** — `Jenkinsfile` 기반 Declarative Pipeline으로 UI · API 테스트를 순차 실행하고 Allure Report를 자동 생성합니다. `AUTH_TOKEN`은 Jenkins Credentials (Secret text)에 등록해 주입하며, 코드에는 노출되지 않습니다.
 
-**GitHub Actions** — `.github/workflows/qa.yml`은 `main` · `develop` 브랜치 push/PR 시 API 테스트를 ubuntu-latest에서 자동 실행합니다.
+**GitHub Actions** — `.github/workflows/qa.yml`은 `main` · `develop` 브랜치 push 시 **Lint → API Tests → UI Tests** 3개 job을 자동 실행합니다.
 
 ---
 
@@ -251,9 +285,9 @@ allure serve allure-results
 
 | 구분 | TC 수 | 결과 |
 |---|---|---|
-| UI (TS-001 ~ TS-005) | 14 | **13 passed · 1 xfail** (TC_009: 다운로드 미저장 버그) |
-| API (TS-006) | 4 | **4 passed** |
-| **총계** | **18** | **17 passed · 1 xfail · 0 failed** |
+| UI (TS-001 ~ TS-005) | 14 | **12 passed · 1 skipped(CI headless) · 1 xfail** (TC_009: 다운로드 미저장 버그) |
+| API (TS-006) | 6 | **6 passed** |
+| **총계** | **20** | **18 passed · 1 skipped · 1 xfail · 0 failed** |
 
 ### Allure 리포트 구성
 
@@ -273,15 +307,10 @@ allure serve allure-results
 ## 문서
 
 - [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 5건 정리 (BUG-005: 이미지 다운로드 미동작, xfail 처리)
-- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 13건 정리
+- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 16건 정리
 - [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)
 
 ---
-
-## 향후 개선 로드맵
-
-- `ChatPage`를 `ChatInputComponent` / `PlusMenuComponent` / `LnbComponent`로 분리하는 **Component Object Pattern** 도입
-- 인증 음성(negative) 케이스 확장 — 만료 토큰, 스코프 부족, 권한 미보유
 
 ---
 
