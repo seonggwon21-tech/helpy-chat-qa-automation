@@ -4,8 +4,10 @@
 """
 
 import logging
-import pytest
+
 import allure
+import pytest
+
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
@@ -20,17 +22,18 @@ class TestMessageSendFlow:
     @allure.title("전송 버튼 클릭 시 입력창 초기화 및 AI 응답 출력 확인")
     def test_send_via_button_shows_ai_response(self, authenticated_driver):
         chat_page = ChatPage(authenticated_driver)
-        chat_page.click(chat_page.NEW_CHAT_BUTTON)
+        chat_page.chat_input.start_new_chat()
 
         message = "소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘."
 
         with allure.step("[TC_001] 텍스트 입력 후 전송 버튼 클릭"):
-            chat_page.enter_text(chat_page.CHAT_INPUT, message)
-            chat_page.click(chat_page.SEND_BUTTON)
+            chat_page.chat_input.send_message(message)
             logger.info(f"메시지 전송 완료: {message}")
 
         with allure.step("[TC_001] 전송 후 입력창 초기화 확인"):
-            input_value = chat_page.wait_for_visible(chat_page.CHAT_INPUT).get_attribute("value")
+            input_value = chat_page.chat_input.wait_for_visible(
+                chat_page.chat_input.CHAT_INPUT
+            ).get_attribute("value")
             assert input_value == "", f"입력창이 초기화되지 않았습니다. value: '{input_value}'"
             logger.info("입력창 초기화 확인 완료")
 

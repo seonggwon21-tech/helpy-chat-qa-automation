@@ -4,11 +4,13 @@
 """
 
 import logging
-import pytest
+
 import allure
+import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger(__name__)
@@ -23,66 +25,55 @@ class TestLnbManagement:
     @allure.title("LNB 대화 항목 추가 → 새로고침 유지 → 삭제 시나리오")
     def test_lnb_lifecycle(self, authenticated_driver):
         chat_page = ChatPage(authenticated_driver)
+        inp = chat_page.chat_input
+        lnb = chat_page.lnb
         long_wait = WebDriverWait(authenticated_driver, 60)
 
         # LNB 항목이 로드될 때까지 대기 (빈 상태로 스냅샷 방지)
         try:
-            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) > 0)
+            long_wait.until(lambda d: len(d.find_elements(*lnb.LNB_CHAT_ITEMS)) > 0)
         except Exception:
             pass
 
-        initial_hrefs = {
-            el.get_attribute("href")
-            for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
-        }
+        initial_hrefs = lnb.get_chat_hrefs()
         logger.info(f"초기 LNB 항목 수: {len(initial_hrefs)}")
 
         with allure.step("[TC_012] 메시지 전송 후 LNB에 새 항목 추가 확인"):
             chat_page.send_message("LNB 목록 관리 테스트")
-            # JS로 href를 한 번에 수집 — 요소 참조 보유 중 LNB 갱신으로 발생하는
-            # StaleElementReferenceException 방지 (troubleshooting #12 동일 패턴)
-            _js_lnb_hrefs = (
-                "return Array.from(document.querySelectorAll("
-                "\"a[href*='/ai-helpy-chat/chats/']\")).map(e => e.href)"
-            )
+            # JS로 href를 원자적으로 수집 — LNB 동적 갱신 중 StaleElementReferenceException 방지
             long_wait.until(
                 lambda d: any(
-                    href not in initial_hrefs
-                    for href in d.execute_script(_js_lnb_hrefs)
+                    href not in initial_hrefs for href in lnb.get_chat_hrefs()
                 )
             )
-            long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
+            long_wait.until(EC.visibility_of_element_located(inp.AI_MESSAGE_CONTENT))
 
-            after_hrefs = set(authenticated_driver.execute_script(_js_lnb_hrefs))
+            after_hrefs = lnb.get_chat_hrefs()
             new_hrefs = after_hrefs - initial_hrefs
-            assert len(new_hrefs) >= 1, \
-                f"LNB에 새 항목이 추가되지 않았습니다."
+            assert len(new_hrefs) >= 1, "LNB에 새 항목이 추가되지 않았습니다."
             logger.info(f"LNB 신규 항목 추가 확인 완료: {new_hrefs}")
 
         with allure.step("[TC_013] 페이지 새로고침 후 신규 대화 유지 확인"):
             new_chat_href = list(new_hrefs)[0]
             new_chat_id = new_chat_href.rstrip("/").split("/")[-1]
             authenticated_driver.refresh()
-            long_wait.until(lambda d: len(d.find_elements(*chat_page.LNB_CHAT_ITEMS)) > 0)
+            long_wait.until(lambda d: len(d.find_elements(*lnb.LNB_CHAT_ITEMS)) > 0)
             # URL로 채팅 유지 확인 (LNB 가상화로 DOM에 없는 항목도 정상 처리)
             long_wait.until(EC.url_contains(new_chat_id))
             logger.info("새로고침 후 LNB 신규 대화 유지 확인 완료")
 
         with allure.step("[TC_014] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
-            current_items = authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
+            current_items = authenticated_driver.find_elements(*lnb.LNB_CHAT_ITEMS)
             target_href = current_items[0].get_attribute("href")
 
             # hover → more 버튼 노출 → 클릭
             ActionChains(authenticated_driver).move_to_element(current_items[0]).perform()
-            chat_page.click(chat_page.LNB_MORE_BUTTON)
-            chat_page.click(chat_page.LNB_DELETE_BUTTON)
-            chat_page.click(chat_page.CONFIRM_DELETE_BUTTON)
+            lnb.click(lnb.LNB_MORE_BUTTON)
+            lnb.click(lnb.LNB_DELETE_BUTTON)
+            lnb.click(lnb.CONFIRM_DELETE_BUTTON)
 
-            # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load로 항목 보충 시 카운트 오차 방지)
+            # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load 항목 보충 시 오차 방지)
             chat_page.wait.until(
-                lambda d: not any(
-                    el.get_attribute("href") == target_href
-                    for el in d.find_elements(*chat_page.LNB_CHAT_ITEMS)
-                )
+                lambda d: target_href not in lnb.get_chat_hrefs()
             )
             logger.info(f"LNB 대화 삭제 확인 완료: {target_href}")

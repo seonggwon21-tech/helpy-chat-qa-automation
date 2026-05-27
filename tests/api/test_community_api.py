@@ -1,16 +1,25 @@
 """
 [TS-006] 커뮤니티 API 검증
 포함 TC: TC_015 (에이전트 목록 조회), TC_016 (에이전트 수 조회),
-         TC_017 (에이전트 상세 조회), TC_018 (미인증 접근 거부)
+         TC_017 (에이전트 상세 조회), TC_018 (미인증 접근 거부),
+         TC_019 (유효하지 않은 토큰 거부), TC_020 (잘못된 인증 스킴 거부)
 """
 
 import logging
-import pytest
+
 import allure
+import pytest
 import requests
 
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.api
+
+# 명백히 유효하지 않은 토큰 — 만료·서명 불일치를 시뮬레이션
+_INVALID_TOKEN = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    ".eyJzdWIiOiIwMDAwMDAwMCIsImV4cCI6MX0"
+    ".INVALID_SIGNATURE_FOR_TEST"
+)
 
 
 @allure.epic("AI Helpy Chat API")
@@ -68,10 +77,11 @@ class TestChatroomAuth:
 
     @allure.title("인증 헤더 없이 요청 시 401 또는 403 반환 확인")
     def test_unauthorized_returns_401_or_403(self, api_base_url):
+        """[TC_018] 인증 헤더 자체를 생략한 경우 서버가 접근을 거부하는지 확인."""
         with allure.step("[TC_018] 인증 없이 GET /chatroom 요청"):
             response = requests.get(
                 f"{api_base_url}/chatroom",
-                headers={"x-elice-org-name-short": "qaproject"}
+                headers={"x-elice-org-name-short": "qaproject"},
             )
             logger.info(f"GET /chatroom (인증 없음) 응답 코드: {response.status_code}")
             assert response.status_code in (401, 403), (
@@ -79,3 +89,41 @@ class TestChatroomAuth:
                 f"상태 코드: {response.status_code}, 응답: {response.text}"
             )
             logger.info(f"미인증 요청 거부 확인 완료 (상태 코드: {response.status_code})")
+
+    @allure.title("유효하지 않은 토큰으로 요청 시 401 또는 403 반환 확인")
+    def test_invalid_token_returns_401_or_403(self, api_base_url):
+        """[TC_019] 서명이 올바르지 않은 JWT 토큰(만료·변조 시뮬레이션)으로 요청 시
+        서버가 토큰을 검증하고 접근을 거부하는지 확인."""
+        with allure.step("[TC_019] 유효하지 않은 Bearer 토큰으로 GET /chatroom 요청"):
+            response = requests.get(
+                f"{api_base_url}/chatroom",
+                headers={
+                    "Authorization": f"Bearer {_INVALID_TOKEN}",
+                    "x-elice-org-name-short": "qaproject",
+                },
+            )
+            logger.info(f"GET /chatroom (유효하지 않은 토큰) 응답 코드: {response.status_code}")
+            assert response.status_code in (401, 403), (
+                f"유효하지 않은 토큰 요청에 예상치 못한 응답. "
+                f"상태 코드: {response.status_code}, 응답: {response.text}"
+            )
+            logger.info(f"유효하지 않은 토큰 거부 확인 완료 (상태 코드: {response.status_code})")
+
+    @allure.title("잘못된 인증 스킴으로 요청 시 401 또는 403 반환 확인")
+    def test_wrong_auth_scheme_returns_401_or_403(self, api_base_url):
+        """[TC_020] Bearer 대신 잘못된 스킴(Basic)을 사용하거나 토큰 형식이
+        완전히 다른 경우 서버가 인증 스킴을 검증하고 거부하는지 확인."""
+        with allure.step("[TC_020] 잘못된 인증 스킴(Basic)으로 GET /agent 요청"):
+            response = requests.get(
+                f"{api_base_url}/agent",
+                headers={
+                    "Authorization": "Basic dGVzdDp0ZXN0",  # base64("test:test")
+                    "x-elice-org-name-short": "qaproject",
+                },
+            )
+            logger.info(f"GET /agent (잘못된 인증 스킴) 응답 코드: {response.status_code}")
+            assert response.status_code in (401, 403), (
+                f"잘못된 인증 스킴 요청에 예상치 못한 응답. "
+                f"상태 코드: {response.status_code}, 응답: {response.text}"
+            )
+            logger.info(f"잘못된 인증 스킴 거부 확인 완료 (상태 코드: {response.status_code})")

@@ -1,0 +1,22 @@
+target-version = "py311"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (미사용 import·변수 등)
+    "W",   # pycodestyle warnings
+    "I",   # isort (import 정렬)
+]
+ignore = [
+    "E501",  # line too long — Selenium 로케이터·URL은 길어질 수밖에 없음
+    "E221",  # multiple spaces before operator — 로케이터 컬럼 정렬 허용
+    "E241",  # multiple spaces after ',' — 로케이터 컬럼 정렬 허용
+]
+
+[lint.isort]
+known-first-party = ["pages", "config", "utils"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
