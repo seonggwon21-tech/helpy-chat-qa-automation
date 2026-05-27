@@ -39,18 +39,21 @@ class TestLnbManagement:
 
         with allure.step("[TC_012] 메시지 전송 후 LNB에 새 항목 추가 확인"):
             chat_page.send_message("LNB 목록 관리 테스트")
+            # JS로 href를 한 번에 수집 — 요소 참조 보유 중 LNB 갱신으로 발생하는
+            # StaleElementReferenceException 방지 (troubleshooting #12 동일 패턴)
+            _js_lnb_hrefs = (
+                "return Array.from(document.querySelectorAll("
+                "\"a[href*='/ai-helpy-chat/chats/']\")).map(e => e.href)"
+            )
             long_wait.until(
                 lambda d: any(
-                    el.get_attribute("href") not in initial_hrefs
-                    for el in d.find_elements(*chat_page.LNB_CHAT_ITEMS)
+                    href not in initial_hrefs
+                    for href in d.execute_script(_js_lnb_hrefs)
                 )
             )
             long_wait.until(EC.visibility_of_element_located(chat_page.AI_MESSAGE_CONTENT))
 
-            after_hrefs = {
-                el.get_attribute("href")
-                for el in authenticated_driver.find_elements(*chat_page.LNB_CHAT_ITEMS)
-            }
+            after_hrefs = set(authenticated_driver.execute_script(_js_lnb_hrefs))
             new_hrefs = after_hrefs - initial_hrefs
             assert len(new_hrefs) >= 1, \
                 f"LNB에 새 항목이 추가되지 않았습니다."
