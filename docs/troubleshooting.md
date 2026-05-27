@@ -344,3 +344,82 @@ after_hrefs = set(authenticated_driver.execute_script(_js_lnb_hrefs))
 
 **적용 범위**  
 동적으로 업데이트되는 리스트 요소를 `WebDriverWait` 람다 내에서 순회할 때는 항상 JS 수집 방식을 우선 사용할 것.
+
+---
+
+## 15. /login/otp 엔드포인트 otp 필드 재필수화 — 자동 로그인 재불가
+
+**현상**  
+GitHub Actions API Tests가 다시 `422 Unprocessable Entity`로 실패.
+
+```json
+{"code":"unprocessable_entity","detail":{"loc":["body","otp"],"msg":"field required"}}
+```
+
+**배경**  
+트러블슈팅 #1에서 동일 오류가 발생해 수동 `AUTH_TOKEN` 방식으로 전환했었음.  
+트러블슈팅 #13에서 브라우저 Network 탭 캡처 결과 `otp` 없이도 동작함을 확인하고 자동 발급 방식으로 재전환했었음.  
+그러나 이후 플랫폼이 `otp` 필드를 다시 필수로 변경해 자동 로그인이 재불가 상태가 됨.
+
+**원인**  
+OTP(2FA)가 실제로 필수화됨. TOTP·SMS 기반 OTP는 CI 환경에서 자동 획득이 불가능.
+
+**해결**  
+`auth_token` fixture를 `AUTH_TOKEN` 환경변수 전용으로 단순화. 자동 로그인 코드 전면 제거.
+
+```python
+@pytest.fixture(scope="session")
+def auth_token():
+    token = os.getenv("AUTH_TOKEN")
+    if not token:
+        pytest.fail("AUTH_TOKEN 환경변수가 설정되지 않았습니다.")
+    return token.removeprefix("Bearer ").strip()
+```
+
+GitHub Secrets에 `AUTH_TOKEN` 등록 후 `qa.yml` API Tests env에 전달.
+
+```yaml
+- name: Run API tests
+  env:
+    AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+```
+
+**토큰 갱신 방법**  
+브라우저 → `qaproject.elice.io` 로그인 → 개발자 도구 Network 탭 → API 요청 클릭 → Request Headers의 `Authorization: Bearer xxxxx` 값 복사 → GitHub Secrets `AUTH_TOKEN` 업데이트.
+
+---
+
+## 16. TC_019 유효하지 않은 토큰 요청 — API 게이트웨이가 401/403 대신 409로 래핑
+
+**현상**  
+TC_019(유효하지 않은 JWT 토큰으로 `GET /chatroom` 요청) 테스트가 실패.
+
+```
+assert 409 in (401, 403)
+응답: {"code":"elice_core_unexpected_result","detail":{"resp_json":{"_result":{"status_code":403,"reason":"auth"}}}}
+```
+
+**원인**  
+이 엔드포인트는 외부 인증 서버(Elice Core)에 ACL 검증을 위임하는 구조.  
+백엔드 인증 실패(403)를 API 게이트웨이가 자체 오류 코드(`elice_core_unexpected_result`)로 감싸 **409**로 반환함.  
+표준 REST 규약(`401/403`)과 다른 이 API 특유의 동작.
+
+**해결**  
+`401/403/409` 모두 인증 거부로 허용. 409인 경우 응답 body 내부에서 실제 인증 실패 사유를 추가 검증.
+
+```python
+assert response.status_code in (401, 403, 409)
+
+if response.status_code == 409:
+    body = response.json()
+    inner_status = (
+        body.get("detail", {})
+        .get("resp_json", {})
+        .get("_result", {})
+        .get("status_code")
+    )
+    assert inner_status == 403, f"inner_status: {inner_status}"
+```
+
+**교훈**  
+MSA 환경에서 인증 실패 응답 코드가 표준과 다를 수 있음. Negative 테스트 작성 시 실제 API 응답을 먼저 캡처해 기대값을 설정할 것.
