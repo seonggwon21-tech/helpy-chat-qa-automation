@@ -29,8 +29,6 @@ load_dotenv()
 
 logger = get_custom_logger(__name__)
 
-AUTH_API_URL = os.getenv("AUTH_API_URL", "")
-
 
 def pytest_sessionstart(session):
     # CI 환경 여부 판단
@@ -109,31 +107,20 @@ def driver():
 # =========================================================
 @pytest.fixture(scope="session")
 def auth_token():
-    """로그인 API로 Bearer 토큰 자동 발급. AUTH_TOKEN 환경변수가 있으면 그것을 우선 사용."""
+    """GitHub Secrets의 AUTH_TOKEN 환경변수에서 Bearer 토큰을 로드한다.
+
+    CI: GitHub Secrets에 AUTH_TOKEN 등록 후 워크플로우 env로 전달.
+    로컬: .env 파일에 AUTH_TOKEN=<token> 형식으로 등록.
+    토큰 갱신: 브라우저 Network 탭에서 Authorization 헤더 값을 복사해 Secret 업데이트.
+    """
     token = os.getenv("AUTH_TOKEN")
-    if token:
-        return token.removeprefix("Bearer ").strip()
-
-    login_id = os.getenv("TEST_USER_ID")
-    password = os.getenv("TEST_USER_PW")
-    if not login_id or not password:
-        pytest.fail("AUTH_TOKEN 또는 TEST_USER_ID/TEST_USER_PW가 .env에 설정되지 않았습니다.")
-
-    response = requests.post(
-        AUTH_API_URL or "https://api-account.elice.io/login/otp",
-        json={"login_id": login_id, "password": password},
-        headers={"Content-Type": "application/json"},
-        timeout=30,
-    )
-    if response.status_code != 200:
-        pytest.fail(f"로그인 API 실패. 상태 코드: {response.status_code}, 응답: {response.text}")
-
-    body = response.json()
-    # 응답 키 이름이 변경될 경우를 대비해 복수 후보를 순서대로 시도
-    token = body.get("access_token") or body.get("token") or body.get("accessToken")
     if not token:
-        pytest.fail(f"로그인 응답에 토큰 키(access_token/token/accessToken)가 없습니다. 응답: {response.text}")
-    return token
+        pytest.fail(
+            "AUTH_TOKEN 환경변수가 설정되지 않았습니다.\n"
+            "CI: GitHub Secrets에 AUTH_TOKEN을 등록하고 워크플로우 env에 추가하세요.\n"
+            "로컬: .env 파일에 AUTH_TOKEN=<token>을 추가하세요."
+        )
+    return token.removeprefix("Bearer ").strip()
 
 
 @pytest.fixture(scope="function")
