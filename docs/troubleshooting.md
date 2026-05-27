@@ -295,3 +295,52 @@ token = response.json().get("access_token")
 ```
 
 이로써 GitHub Secrets에 `TEST_USER_ID` / `TEST_USER_PW`만 등록하면 토큰 갱신 없이 CI가 영구적으로 동작함.
+
+---
+
+## 14. StaleElementReferenceException — LNB 동적 갱신 중 요소 참조 무효화 (TC_012)
+
+**현상**  
+TC_012(메시지 전송 후 LNB 신규 항목 추가 확인)에서 메시지 전송 직후 LNB 신규 항목을 기다리는 `long_wait.until` 람다 내부에서 `StaleElementReferenceException` 발생.
+
+```
+selenium.common.exceptions.StaleElementReferenceException:
+stale element reference: stale element not found in the current frame
+```
+
+**원인**  
+`long_wait.until` 람다가 반복 호출될 때마다 `find_elements`로 LNB 요소 목록을 수집하고, 요소별로 `get_attribute("href")`를 순회함.  
+메시지 전송 후 LNB가 신규 항목을 동적으로 추가·재렌더링하는 타이밍에 람다가 재진입하면, 직전 호출에서 수집한 요소 참조가 이미 stale 상태가 되어 예외 발생.  
+트러블슈팅 #12(TC_013 새로고침)와 근본 원인은 동일하나, 트리거가 `driver.refresh()`가 아닌 LNB의 실시간 DOM 갱신이라는 점에서 차이가 있음.
+
+**해결**  
+`find_elements` + `get_attribute` 조합 대신 JavaScript `execute_script`로 href를 한 번에 원자적으로 수집.  
+JS 실행은 단일 RPC 호출이므로 수집 도중 DOM이 교체될 여지가 없음.  
+`after_hrefs` 수집부도 동일 방식으로 통일.
+
+```python
+_js_lnb_hrefs = (
+    "return Array.from(document.querySelectorAll("
+    "\"a[href*='/ai-helpy-chat/chats/']\")).map(e => e.href)"
+)
+
+# 수정 전 — 요소 참조 보유 중 LNB 갱신 시 stale 발생
+long_wait.until(
+    lambda d: any(
+        el.get_attribute("href") not in initial_hrefs
+        for el in d.find_elements(*chat_page.LNB_CHAT_ITEMS)
+    )
+)
+
+# 수정 후 — JS로 href를 원자적으로 수집
+long_wait.until(
+    lambda d: any(
+        href not in initial_hrefs
+        for href in d.execute_script(_js_lnb_hrefs)
+    )
+)
+after_hrefs = set(authenticated_driver.execute_script(_js_lnb_hrefs))
+```
+
+**적용 범위**  
+동적으로 업데이트되는 리스트 요소를 `WebDriverWait` 람다 내에서 순회할 때는 항상 JS 수집 방식을 우선 사용할 것.
