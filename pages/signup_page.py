@@ -13,7 +13,7 @@ from .base_page import BasePage
 class SignupPage(BasePage):
     """약관 동의 및 계정 생성 프로세스 처리 클래스"""
 
-    AGREE_ALL_CHECKBOX = (By.CSS_SELECTOR, "input[type='checkbox']")
+    AGREE_ALL_CHECKBOX = (By.CSS_SELECTOR, "input[type='checkbox']:first-of-type")
     CREATE_ACCOUNT_BUTTON = (By.CSS_SELECTOR, "button[form='signup-form']")
 
     def __init__(self, driver: WebDriver):

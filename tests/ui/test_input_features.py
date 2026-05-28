@@ -10,7 +10,6 @@ import allure
 import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.chat_page import ChatPage
 
@@ -27,7 +26,7 @@ class TestInputFeatures:
     def test_input_features_scenario(self, authenticated_driver):
         chat_page = ChatPage(authenticated_driver)
         inp = chat_page.chat_input
-        long_wait = WebDriverWait(authenticated_driver, 60)
+        long_wait = chat_page.wait_up_to(60)
 
         inp.start_new_chat()
         logger.info("새 대화 화면 진입")

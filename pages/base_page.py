@@ -69,3 +69,10 @@ class BasePage:
     @allure.step("요소 사라짐 대기: {locator} (최대 {timeout}초)")
     def wait_until_invisible(self, locator: tuple[str, str], timeout: int = DEFAULT_WAIT_TIME):
         WebDriverWait(self.driver, timeout).until(EC.invisibility_of_element_located(locator))
+
+    def wait_up_to(self, timeout: int) -> WebDriverWait:
+        """DEFAULT_WAIT_TIME보다 긴 대기가 필요한 경우 임시 WebDriverWait를 반환합니다.
+
+        테스트에서 long_wait = WebDriverWait(driver, n) 패턴을 대체합니다.
+        """
+        return WebDriverWait(self.driver, timeout)

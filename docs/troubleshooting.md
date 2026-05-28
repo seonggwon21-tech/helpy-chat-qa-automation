@@ -423,3 +423,118 @@ if response.status_code == 409:
 
 **교훈**  
 MSA 환경에서 인증 실패 응답 코드가 표준과 다를 수 있음. Negative 테스트 작성 시 실제 API 응답을 먼저 캡처해 기대값을 설정할 것.
+
+---
+
+## 17. 파일 업로드 — `Page.setInterceptFileChooser` Chrome 148 미지원
+
+**현상**  
+크로스 브라우저 확장 작업 중 파일 업로드 TC(TC_008)가 Chrome 최신 버전에서 실패.  
+CDP `Page.setInterceptFileChooser` 호출 시 아무 반응 없이 파일이 선택되지 않음.
+
+**원인**  
+Chrome 148부터 `Page.setInterceptFileChooser` 커맨드가 더 이상 지원되지 않음.  
+OS 네이티브 파일 다이얼로그를 인터셉트하는 CDP 방식 자체가 해당 버전에서 제거됨.
+
+**해결**  
+CDP 방식을 완전히 제거하고 `send_keys` 풀패스 방식으로 교체.  
+`input[type='file']`에 절대 경로를 직접 전달하면 OS 파일 다이얼로그 없이 파일이 설정됨.  
+Selenium은 `input[type='file']` 요소에 대해 `send_keys`를 특수 처리하므로 hidden 상태에서도 동작하지만,  
+브라우저별 안정성을 위해 JS로 `display:block` / `visibility:visible`을 강제 설정한 뒤 호출.
+
+```python
+# plus_menu_component.py
+def upload_file(self, file_path):
+    self.select_plus_menu_item(self.MENU_FILE_UPLOAD)
+    file_input = self.wait.until(EC.presence_of_element_located(self.FILE_INPUT))
+    self.driver.execute_script(
+        "arguments[0].removeAttribute('hidden');"
+        "arguments[0].style.display='block';"
+        "arguments[0].style.visibility='visible';",
+        file_input,
+    )
+    file_input.send_keys(str(Path(file_path).resolve()))  # 절대 경로 직접 주입
+```
+
+단독 실행 결과 **PASSED** 확인. Chrome · Edge · Firefox 모두 동일 코드로 동작.
+
+---
+
+## 18. 크로스 브라우저 — Firefox CDP 미지원으로 쿠키 주입 실패
+
+**현상**  
+`--browser firefox`로 실행 시 `authenticated_driver` 픽스처에서 로그인 실패.  
+캐시된 쿠키를 주입하려는 시점에 `invalid session id` 또는 `unknown command` 오류 발생.
+
+**원인**  
+기존 쿠키 주입 방식은 Chrome DevTools Protocol의 `Network.setCookie` 커맨드를 사용.  
+Firefox는 W3C WebDriver 프로토콜만 지원하며 CDP 커맨드를 지원하지 않음.  
+`driver.execute_cdp_cmd()`는 Chromium 계열(Chrome · Edge)에서만 동작하는 API.
+
+**해결**  
+`browser` 파라미터로 분기 처리.  
+Firefox는 목표 도메인으로 먼저 이동(`driver.get(base_url)`)한 뒤 Selenium 표준 `add_cookie()`를 사용.  
+쿠키 도메인 앞에 붙는 `.`(leading dot)은 Firefox의 `add_cookie()`가 거부하므로 `lstrip(".")`으로 제거.
+
+```python
+if browser == "firefox":
+    # Firefox: CDP 미지원 → 도메인 이동 후 Selenium add_cookie로 주입
+    driver.get(base_url)
+    for cookie in cached_cookies:
+        try:
+            driver.add_cookie({
+                "name": cookie["name"],
+                "value": cookie["value"],
+                "domain": cookie.get("domain", "qaproject.elice.io").lstrip("."),
+                "path": cookie.get("path", "/"),
+                "secure": cookie.get("secure", False),
+                "httpOnly": cookie.get("httpOnly", False),
+            })
+        except Exception:
+            pass
+else:
+    # Chrome / Edge: CDP로 도메인 제약 없이 주입
+    driver.execute_cdp_cmd("Network.enable", {})
+    for cookie in cached_cookies:
+        driver.execute_cdp_cmd("Network.setCookie", {...})
+```
+
+**교훈**  
+크로스 브라우저 확장 시 CDP 의존 코드는 모두 점검 대상. `execute_cdp_cmd` 사용처를 일괄 검색해 Firefox 폴백 분기를 추가할 것.
+
+---
+
+## 19. 크로스 브라우저 — 쿠키 캐시 미분리로 `--browser all` 인증 실패
+
+**현상**  
+`--browser all`로 3브라우저 순차 실행 시 Chrome 이후 Firefox 세션에서 인증 실패.  
+Chrome은 PASSED, Edge · Firefox는 `fixture_login_failed.png` 스크린샷과 함께 FAILED.
+
+**원인**  
+쿠키 캐시 파일이 `elice_session.json` 단일 파일로 공유됨.  
+Chrome 테스트가 저장한 쿠키를 Firefox가 그대로 읽어 주입하는데, 브라우저 간 세션 쿠키는 호환되지 않아 인증 실패.  
+실패 후 캐시가 삭제되면 Edge · Firefox는 신규 로그인을 시도하지만, 이 역시 Chrome 캐시가 다시 생성되어 순환 충돌 발생.
+
+```
+# 기존: 모든 브라우저가 같은 캐시 파일을 읽고 씀
+_COOKIE_CACHE_PATH = Path(".pytest_cache/elice_session.json")
+```
+
+**해결**  
+캐시 경로를 브라우저명 포함 파일명으로 분리하는 `_cookie_cache_path(browser)` 함수로 전환.  
+동시에 상대 경로의 실행 위치 의존 문제를 해소하기 위해 `Path(__file__).parent` 기반 절대 경로로 변경.
+
+```python
+_COOKIE_CACHE_DIR = Path(__file__).parent / ".pytest_cache"
+
+def _cookie_cache_path(browser: str) -> Path:
+    return _COOKIE_CACHE_DIR / f"elice_session_{browser}.json"
+
+# --browser all 실행 시 각 브라우저가 독립 캐시 사용
+# elice_session_chrome.json
+# elice_session_edge.json
+# elice_session_firefox.json
+```
+
+**교훈**  
+브라우저 파라미터화처럼 동일 픽스처가 여러 값으로 실행되는 경우, 파일·상태를 공유하는 전역 리소스는 파라미터별로 격리해야 함.

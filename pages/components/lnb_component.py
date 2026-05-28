@@ -1,5 +1,7 @@
 """LNB(Left Navigation Bar) 컴포넌트 — 대화 목록 생성·삭제·조회를 담당."""
 
+import time
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -23,7 +25,28 @@ class LnbComponent(BasePage):
     def __init__(self, driver: WebDriver):
         super().__init__(driver)
 
-    def get_chat_hrefs(self) -> set[str]:
+    def wait_for_lnb_loaded(self, timeout: int = 10) -> None:
+        """LNB 항목 수가 3회 연속 동일할 때까지 폴링해 안정화를 기다립니다.
+
+        Raises:
+            TimeoutError: timeout 내에 항목 수가 안정화되지 않은 경우.
+        """
+        stable_rounds = 0
+        prev_count = -1
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            current = len(self.driver.find_elements(*self.LNB_CHAT_ITEMS))
+            if current == prev_count:
+                stable_rounds += 1
+                if stable_rounds >= 3:
+                    return
+            else:
+                stable_rounds = 0
+            prev_count = current
+            time.sleep(0.3)
+        raise TimeoutError(f"LNB 항목 수가 {timeout}초 내에 안정화되지 않았습니다.")
+
+    def get_lnb_hrefs(self) -> set[str]:
         """현재 LNB에 노출된 대화 항목의 href를 JS로 원자적으로 수집합니다.
 
         DOM 갱신 중 요소 참조가 무효화되는 StaleElementReferenceException을
