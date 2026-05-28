@@ -28,3 +28,6 @@ allure-results/
 # Claude Code
 .claude/
 CLAUDE.md
+
+# 작업 내부 문서 (코드 리뷰, 면접 준비 등)
+_workspace/
