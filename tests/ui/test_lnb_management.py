@@ -48,7 +48,8 @@ class TestLnbManagement:
             logger.info(f"LNB 신규 항목 추가 확인 완료: {new_hrefs}")
 
         with allure.step("[TC_013] 페이지 새로고침 후 신규 대화 유지 확인"):
-            new_chat_href = list(new_hrefs)[0]
+            # set 순서가 비결정적이므로 현재 브라우저 URL에서 직접 ID 추출
+            new_chat_href = authenticated_driver.current_url
             new_chat_id = new_chat_href.rstrip("/").split("/")[-1]
             authenticated_driver.refresh()
             lnb.wait_for_lnb_loaded()
