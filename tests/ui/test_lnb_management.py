@@ -57,6 +57,7 @@ class TestLnbManagement:
             logger.info("새로고침 후 LNB 신규 대화 유지 확인 완료")
 
         with allure.step("[TC_014] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
+            long_wait.until(lambda d: len(d.find_elements(*lnb.LNB_CHAT_ITEMS)) > 0)
             current_items = authenticated_driver.find_elements(*lnb.LNB_CHAT_ITEMS)
             target_href = current_items[0].get_attribute("href")
 
