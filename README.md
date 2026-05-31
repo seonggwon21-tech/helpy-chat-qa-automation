@@ -37,9 +37,9 @@
 
 ![Allure Report](docs/images/allure-report.png)
 
-### 테스트 대상 서비스
+### 테스트 실행 장면
 
-![AI Helpy Chat](docs/images/test_message_send.png)
+![Test Run Demo](docs/images/demo_test_run.gif.gif)
 
 ---
 
