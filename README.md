@@ -1,6 +1,6 @@
 # HelpyChat QA Automation
 
-> AI Helpy Chat 서비스(qaproject.elice.io)의 UI · API 핵심 시나리오를 Selenium + pytest로 자동화한 QA 포트폴리오 프로젝트
+> AI Helpy Chat(qaproject.elice.io) — UI 14개 · API 6개 **총 20 TC**, 버그 5건 추적, Jenkins + GitHub Actions 이중 CI를 갖춘 Selenium + pytest QA 자동화 포트폴리오
 
 ![Python](https://img.shields.io/badge/Python-3.14-blue?logo=python&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-8.x-0A9EDC?logo=pytest&logoColor=white)
@@ -10,13 +10,16 @@
 ![Jenkins](https://img.shields.io/badge/Jenkins-CI-D24939?logo=jenkins&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
-> 이 프로젝트는 Claude AI의 도움을 받아 만들었습니다.
+> **Claude AI를 적극 활용해** 설계·구현 전 과정을 진행했습니다.
 >
 > 테스트 케이스 수보다, 왜 이렇게 짜야 하는지를 이해하면서 만들고 싶었습니다.
+> Component Object Pattern 도입도, fixture scope를 `session`/`function`으로 나눈 것도 — 단순히 동작하게 만드는 것보다 설계 의도를 이해하는 데 더 많은 시간을 썼습니다.
 >
-> Jenkins 플러그인 서버가 중국 미러로 막혔을 때 VPN으로 우회했고, Python 경로 문제도 직접 파고들었습니다. AI가 브라우저에 테스트 단계를 오버레이로 표시하는 기능을 제안했을 때는, 자동화 목적에 불필요한 JS 실행이 매 스텝마다 추가되는 거라 판단해서 걷어냈습니다.
+> Jenkins 플러그인 서버가 중국 미러로 막혔을 때 VPN으로 우회했고, Python 경로 문제도 직접 파고들었습니다.
 >
 > 재현되는 버그는 skip으로 넘기지 않고 xfail로 처리했습니다. 테스트가 실행되고 실패해야, 버그가 실제로 존재한다는 걸 결과로 남길 수 있다고 생각했기 때문입니다.
+>
+> 테스트가 통과했는지뿐 아니라 어느 단계에서 왜 실패했는지 보고 싶어서 Allure를 썼습니다. 터미널에서 테스트 흐름을 직접 눈으로 보고 싶어서 로깅을 붙였고, Jenkins와 GitHub Actions는 둘 다 경험해보고 싶어서 함께 구성했습니다 — Jenkins는 기능이 가장 많고, GitHub Actions는 편하고 빠르게 쓸 수 있었습니다.
 
 ---
 
@@ -42,9 +45,13 @@
 
 ## 프로젝트 개요
 
-엘리스(Elice)의 AI 어시스턴트 서비스인 **AI Helpy Chat**(`qaproject.elice.io/ai-helpy-chat`)을 대상으로 한 엔드 투 엔드 QA 자동화 포트폴리오입니다. 메시지 송수신, 입력 인터랙션, 새 대화 관리, 플러스 메뉴(파일 첨부·다운로드), LNB(좌측 네비게이션) 동작 등 핵심 사용자 시나리오를 UI 자동화로 검증하고, 동시에 에이전트 CRUD API를 별도 트랙으로 검증해 **UI · API 듀얼 트랙 회귀 안전망**을 구성했습니다.
+**5인 팀 · UI 14개 + API 6개 = 총 20 TC · 18 passed · 버그 5건 발견 · CI 파이프라인 2종**
 
-단순 자동화 스크립트가 아니라 **Component Object Pattern, POM 계층화, fixture scope 트레이드오프 분리, CDP 기반 쿠키 캐싱을 통한 SSO 비용 절감, Chrome · Edge · Firefox 크로스 브라우저 지원, 실패 자동 진단(스크린샷 + Allure 첨부), Ruff 정적 분석 CI 연동, 인증 음성(negative) 케이스 검증, 알려진 버그의 xfail 추적**까지 갖춘 실무형 프레임워크를 목표로 설계했습니다.
+엘리스의 AI 채팅 서비스(qaproject.elice.io)를 대상으로 한 QA 자동화 포트폴리오입니다. 사용자가 메시지를 보내고, AI가 응답하고, 파일을 업로드하고, 대화 목록을 관리하는 핵심 흐름을 자동으로 검증합니다. API 인증 음성(negative) 케이스까지 포함해 UI와 API 두 트랙을 모두 커버합니다.
+
+5인 팀 프로젝트에서 **새 대화 기능 UI 테스트 자동화와 프레임워크 설계 전반**을 담당했습니다.
+
+단순히 동작하는 스크립트가 아니라, 나중에 테스트를 추가하거나 UI가 바뀌어도 유지보수할 수 있는 구조를 목표로 설계했습니다. Page Object Model 위에 Component Object Pattern을 얹어 UI 영역별 책임을 나눴고, CDP 쿠키 주입으로 매 테스트마다 반복되던 SSO 로그인 대기를 없앴습니다.
 
 ---
 
@@ -141,18 +148,28 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 6개 TC, **총 20개 TC**.
 
 ### 1. Component Object Pattern — ChatPage 역할별 분리
 
-**무엇을 했나.** 채팅 입력·플러스 메뉴·LNB 관리를 모두 담당하던 `ChatPage` 단일 클래스를 세 개의 전담 컴포넌트로 분리했습니다. `ChatPage`는 컴포넌트 인스턴스를 공개 속성으로 노출하는 **파사드(Facade)** 역할만 수행합니다. 다운로드 완료 감지처럼 Page 레이어와 무관한 유틸리티는 `utils/download.py`로 분리해 각 계층의 책임을 명확히 유지합니다.
+**어떤 문제가 있었나.** POM을 처음 적용할 때는 채팅 화면 전체를 `ChatPage` 하나로 관리했습니다. 테스트 케이스가 늘면서 채팅 입력·전송, + 버튼 메뉴, 왼쪽 대화 목록(LNB)이 모두 한 파일에 쌓였고, 클래스가 400줄에 근접했습니다. 파일 업로드 테스트(TC_008)를 작성하다가 "이 메서드는 PlusMenu의 기능인가, ChatPage의 기능인가"를 스스로도 헷갈리기 시작했을 때 분리를 결심했습니다.
+
+**무엇을 했나.** 화면의 UI 영역별로 전담 컴포넌트 클래스를 만들었습니다.
+
+| 컴포넌트 | 담당 화면 영역 | 주요 역할 |
+|---|---|---|
+| `ChatInputComponent` | 채팅 입력창 | 메시지 입력·전송, AI 응답 대기 |
+| `PlusMenuComponent` | + 버튼 팝업 | 파일·이미지·PPT 업로드, 웹 검색 |
+| `LnbComponent` | 왼쪽 대화 목록 | 목록 로딩 대기, 대화 URL 수집·삭제 |
+
+`ChatPage`는 이 세 컴포넌트를 속성으로 들고 있는 **조율자** 역할만 합니다. 로케이터를 직접 갖거나 클릭하지 않고, 테스트에서 `chat_page.chat_input.send_message()` 형태로 접근합니다.
 
 ```
-ChatPage (facade)
-├── self.chat_input  → ChatInputComponent  : CHAT_INPUT, SEND_BUTTON, send_message(), wait_for_ai_response()
-├── self.plus_menu   → PlusMenuComponent   : PLUS_BUTTON, upload_file(), select_plus_menu_item()
-└── self.lnb         → LnbComponent        : LNB_CHAT_ITEMS, wait_for_lnb_loaded(), get_lnb_hrefs()
-
-utils/download.py    wait_for_download()   : .crdownload + .part 병행 감지 (Page 레이어 외부)
+ChatPage (조율자)
+├── self.chat_input  →  ChatInputComponent   메시지 전송 · AI 응답 대기
+├── self.plus_menu   →  PlusMenuComponent    파일 · 이미지 · PPT · 웹검색
+└── self.lnb         →  LnbComponent         대화 목록 조회 · 삭제
 ```
 
-**왜 이 방식인가.** 기능이 추가될수록 단일 Page Object가 수백 줄이 되고 SRP(단일 책임 원칙)가 무너집니다. 컴포넌트 분리 후 각 컴포넌트는 자신의 로케이터와 액션만 책임지므로 특정 UI 영역 변경 시 해당 컴포넌트 파일만 수정하면 됩니다.
+다운로드 완료 감지(`wait_for_download`)는 특정 UI 영역과 무관한 유틸리티라 `utils/download.py`로 따로 뺐습니다.
+
+**왜 이 구조가 좋은가.** UI가 바뀌었을 때 수정 범위가 명확해집니다. + 버튼 위치가 바뀌면 `PlusMenuComponent`만 열면 됩니다. 분리 전에는 어디를 고쳐야 하는지 `ChatPage` 전체를 읽어야 했습니다.
 
 ### 2. 크로스 브라우저 지원 — pytest_addoption + pytest_generate_tests
 
