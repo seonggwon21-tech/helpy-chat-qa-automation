@@ -39,7 +39,7 @@
 
 ### 테스트 실행 장면
 
-![Test Run Demo](docs/images/demo_test_run.gif.gif)
+![Test Run Demo](docs/images/demo_test_run.gif)
 
 ---
 
