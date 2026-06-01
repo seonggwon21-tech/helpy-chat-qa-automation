@@ -9,6 +9,9 @@
 ![Ruff](https://img.shields.io/badge/Ruff-Lint-D7FF64?logo=ruff&logoColor=black)
 ![Jenkins](https://img.shields.io/badge/Jenkins-CI-D24939?logo=jenkins&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
+[![CI](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/qa.yml/badge.svg)](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/qa.yml)
+
+> 📌 본 레포는 5인 팀 GitLab 프로젝트에서 제가 담당한 영역(채팅 UI 자동화 · 프레임워크 설계)을 개인 포트폴리오로 정리한 것입니다.
 
 > **Claude AI를 적극 활용해** 설계·구현 전 과정을 진행했습니다.
 >
