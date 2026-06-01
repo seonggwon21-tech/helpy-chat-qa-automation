@@ -13,16 +13,12 @@
 
 > 📌 본 레포는 5인 팀 GitLab 프로젝트에서 제가 담당한 영역(채팅 UI 자동화 · 프레임워크 설계)을 개인 포트폴리오로 정리한 것입니다.
 
-> **Claude AI를 적극 활용해** 설계·구현 전 과정을 진행했습니다.
+> 테스트 케이스 수보다, 왜 이렇게 설계해야 하는지를 이해하는 데 더 많은 시간을 썼습니다.
+> Component Object Pattern 도입도, fixture scope를 `session`/`function`으로 나눈 것도 — 단순히 동작하게 만드는 것보다 설계 의도를 먼저 이해하고 구현했습니다.
 >
-> 테스트 케이스 수보다, 왜 이렇게 짜야 하는지를 이해하면서 만들고 싶었습니다.
-> Component Object Pattern 도입도, fixture scope를 `session`/`function`으로 나눈 것도 — 단순히 동작하게 만드는 것보다 설계 의도를 이해하는 데 더 많은 시간을 썼습니다.
+> 재현 가능한 버그는 skip이 아닌 xfail로 처리했습니다. 테스트가 실행되고 실패해야 버그가 실제로 존재한다는 사실을 결과로 남길 수 있기 때문입니다.
 >
-> Jenkins 플러그인 서버가 중국 미러로 막혔을 때 VPN으로 우회했고, Python 경로 문제도 직접 파고들었습니다.
->
-> 재현되는 버그는 skip으로 넘기지 않고 xfail로 처리했습니다. 테스트가 실행되고 실패해야, 버그가 실제로 존재한다는 걸 결과로 남길 수 있다고 생각했기 때문입니다.
->
-> 테스트가 통과했는지뿐 아니라 어느 단계에서 왜 실패했는지 보고 싶어서 Allure를 썼습니다. 터미널에서 테스트 흐름을 직접 눈으로 보고 싶어서 logging을 붙였고, Jenkins와 GitHub Actions는 둘 다 경험해보고 싶어서 함께 구성했습니다 — Jenkins는 기능이 가장 많고, GitHub Actions는 편하고 빠르게 쓸 수 있었습니다.
+> 어느 단계에서 왜 실패했는지 추적하기 위해 Allure와 logging을 함께 구성했습니다. Jenkins와 GitHub Actions를 이중으로 구성한 것은 두 툴의 설계 철학을 직접 비교하기 위한 선택이었습니다 — Jenkins는 플러그인 생태계와 파이프라인 제어가 세밀하고, GitHub Actions는 리포 연동과 구성 비용이 낮습니다.
 
 ---
 
@@ -50,11 +46,11 @@
 
 **5인 팀 · UI 14개 + API 6개 = 총 20 TC · 18 passed · 버그 5건 발견 · CI 파이프라인 2종**
 
-엘리스의 AI 채팅 서비스(qaproject.elice.io)를 대상으로 한 QA 자동화 포트폴리오입니다. 사용자가 메시지를 보내고, AI가 응답하고, 파일을 업로드하고, 대화 목록을 관리하는 핵심 흐름을 자동으로 검증합니다. API 인증 음성(negative) 케이스까지 포함해 UI와 API 두 트랙을 모두 커버합니다.
+UI가 바뀌어도 유지보수할 수 있는 자동화 프레임워크를 설계했습니다. 5인 팀 프로젝트에서 **새 대화 기능 UI 테스트 자동화와 프레임워크 설계 전반**을 담당했으며, 엘리스의 AI 채팅 서비스(qaproject.elice.io)를 대상으로 메시지 전송·파일 업로드·대화 목록 관리 등 핵심 흐름을 자동으로 검증합니다. API 인증 음성(negative) 케이스까지 포함해 UI와 API 두 트랙을 모두 커버합니다.
 
-5인 팀 프로젝트에서 **새 대화 기능 UI 테스트 자동화와 프레임워크 설계 전반**을 담당했습니다.
+Page Object Model 위에 Component Object Pattern을 얹어 UI 영역별 책임을 분리했고, CDP 쿠키 주입으로 매 테스트마다 반복되던 SSO 로그인 대기를 제거했습니다.
 
-단순히 동작하는 스크립트가 아니라, 나중에 테스트를 추가하거나 UI가 바뀌어도 유지보수할 수 있는 구조를 목표로 설계했습니다. Page Object Model 위에 Component Object Pattern을 얹어 UI 영역별 책임을 나눴고, CDP 쿠키 주입으로 매 테스트마다 반복되던 SSO 로그인 대기를 없앴습니다.
+> **테스트 시간 = 비용** · **실패는 디버깅 가능해야 한다** · **자동화 ≠ 통과율 100%** · **운영 환경을 의식한다**
 
 ---
 
@@ -62,7 +58,7 @@
 
 | 분류 | 사용 기술 | 선택 이유 |
 |---|---|---|
-| 언어 | Python 3.14 | 표준 라이브러리만으로 fixture 캐시·CDP 통신 구현 |
+| 언어 | Python 3.14 | pytest · Selenium · requests 생태계 표준; 표준 라이브러리로 fixture 캐시·CDP 통신 직접 구현 |
 | UI 자동화 | Selenium 4 + CDP | `execute_cdp_cmd("Network.setCookie")`로 도메인 진입 전에도 쿠키 주입 → SSO 리다이렉트 우회 |
 | 크로스 브라우저 | Chrome · Edge · Firefox | `--browser` CLI 옵션으로 단일 또는 3브라우저 동시 실행; Firefox CDP 미지원 문제는 `add_cookie` 폴백으로 해결 |
 | API 자동화 | requests | `Session` 객체로 헤더·연결 풀 재사용, 인증 음성(negative) 케이스 포함 |
@@ -151,9 +147,9 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 6개 TC, **총 20개 TC**.
 
 ### 1. Component Object Pattern — ChatPage 역할별 분리
 
-**어떤 문제가 있었나.** POM을 처음 적용할 때는 채팅 화면 전체를 `ChatPage` 하나로 관리했습니다. 테스트 케이스가 늘면서 채팅 입력·전송, + 버튼 메뉴, 왼쪽 대화 목록(LNB)이 모두 한 파일에 쌓였고, 클래스가 400줄에 근접했습니다. 파일 업로드 테스트(TC_008)를 작성하다가 "이 메서드는 PlusMenu의 기능인가, ChatPage의 기능인가"를 스스로도 헷갈리기 시작했을 때 분리를 결심했습니다.
+**UI 변경 시 수정 범위를 해당 컴포넌트 1개로 한정하기 위해 ChatPage를 세 컴포넌트로 분리했습니다.** POM만으로 구성했을 때 `ChatPage`는 채팅 입력·전송, + 버튼 메뉴, LNB가 모두 한 파일에 쌓여 400줄에 근접했고, TC_008 작성 중 "이 메서드는 PlusMenu의 기능인가, ChatPage의 기능인가"를 구분하기 어려워졌습니다.
 
-**무엇을 했나.** 화면의 UI 영역별로 전담 컴포넌트 클래스를 만들었습니다.
+화면의 UI 영역별로 전담 컴포넌트 클래스를 만들었습니다.
 
 | 컴포넌트 | 담당 화면 영역 | 주요 역할 |
 |---|---|---|
@@ -176,7 +172,7 @@ ChatPage (조율자)
 
 ### 2. 크로스 브라우저 지원 — pytest_addoption + pytest_generate_tests
 
-**무엇을 했나.** `--browser` CLI 옵션으로 Chrome · Edge · Firefox 3종 중 하나 또는 전체를 실행할 수 있습니다. `pytest_addoption`으로 옵션을 등록하고, `pytest_generate_tests`로 `--browser all` 지정 시 모든 테스트를 3브라우저로 자동 파라미터화합니다.
+**`--browser` 옵션 하나로 Chrome · Edge · Firefox를 단독 또는 전체 실행할 수 있고, 테스트 코드 변경 없이 파라미터화가 자동 전파됩니다.** `pytest_addoption`으로 옵션을 등록하고, `pytest_generate_tests`로 `--browser all` 지정 시 모든 테스트를 3브라우저로 자동 파라미터화합니다.
 
 ```python
 # conftest.py
@@ -216,7 +212,7 @@ browser  (pytest_generate_tests가 값 주입)
 
 ### 3. send_keys 풀패스 파일 업로드 — OS 파일 다이얼로그 우회
 
-**무엇을 했나.** 기존 `Page.setInterceptFileChooser` CDP 방식은 Chrome 148에서 미지원 상태가 되었습니다. `PlusMenuComponent.upload_file()`은 `select_plus_menu_item()`으로 + 메뉴를 닫은 뒤, 숨겨진 `input[type='file']`을 JS로 강제 노출하고 절대 경로를 `send_keys`로 직접 주입합니다.
+**OS 파일 다이얼로그를 우회해 Chrome · Edge · Firefox 및 headless 환경에서 동일하게 동작합니다.** Chrome 148에서 기존 `Page.setInterceptFileChooser` CDP 방식의 지원이 중단되어, `PlusMenuComponent.upload_file()`은 숨겨진 `input[type='file']`을 JS로 강제 노출하고 절대 경로를 `send_keys`로 직접 주입하는 방식으로 전환했습니다.
 
 ```python
 def upload_file(self, file_path):
@@ -237,7 +233,7 @@ def upload_file(self, file_path):
 
 ### 4. select_plus_menu_item — 팝오버 닫힘 대기로 Firefox 타이밍 이슈 해결
 
-**무엇을 했나.** `+` 메뉴 항목을 선택하는 반복 패턴(open_menu → click → 다음 동작)을 `select_plus_menu_item()`으로 추출하고, 클릭 직후 `PLUS_MENU_POPOVER`(`ul[role='menu']`)가 DOM에서 사라질 때까지 대기하는 로직을 추가했습니다.
+**팝오버 소멸을 명시적으로 대기해 Firefox의 `ElementClickInterceptedException`을 원천 차단했습니다.** `+` 메뉴 항목 선택 패턴(open_menu → click → 다음 동작)을 `select_plus_menu_item()`으로 추출하고, 클릭 직후 `PLUS_MENU_POPOVER`(`ul[role='menu']`)가 DOM에서 사라질 때까지 대기하는 로직을 추가했습니다.
 
 ```python
 def select_plus_menu_item(self, menu_locator: tuple[str, str]):
@@ -246,11 +242,11 @@ def select_plus_menu_item(self, menu_locator: tuple[str, str]):
     self.wait_until_invisible(self.PLUS_MENU_POPOVER)   # Firefox 팝오버 잔재 방지
 ```
 
-**왜 이 방식인가.** Firefox는 Chromium 대비 MUI 팝오버 애니메이션 처리가 느려, 팝오버가 DOM에 남아 있는 상태에서 다음 동작이 실행되면 `ElementClickInterceptedException`이 발생합니다. 팝오버 소멸을 명시적으로 기다리는 게 `time.sleep`보다 결정론적이고 정확합니다.
+**왜 이 방식인가.** Firefox는 Chromium 대비 MUI 팝오버 애니메이션 처리가 느려, 팝오버가 DOM에 남아 있는 상태에서 다음 동작이 실행되면 `ElementClickInterceptedException`이 발생합니다. 팝오버 소멸을 명시적으로 기다리는 게 `time.sleep`보다 결정론적이고 안정적입니다.
 
 ### 5. wait_for_download — Chrome · Firefox 임시 확장자 병행 감지
 
-**무엇을 했나.** `utils/download.py`의 `wait_for_download()`는 다운로드 완료를 판단할 때 `.crdownload`(Chrome/Edge)와 `.part`(Firefox) 두 임시 확장자를 모두 감지합니다. 초기 구현은 `ChatPage` 정적 메서드였으나, Page 레이어와 무관한 유틸리티가 Page 클래스에 위치하는 SRP 위반을 해소하기 위해 `utils/download.py`로 분리했습니다. 테스트는 `from utils.download import wait_for_download`로 직접 임포트합니다.
+**`.crdownload`(Chrome/Edge)와 `.part`(Firefox) 두 임시 확장자를 모두 감지해 브라우저별 다운로드 완료를 단일 로직으로 처리합니다.** 초기 구현은 `ChatPage` 정적 메서드였으나, Page 레이어와 무관한 유틸리티가 Page 클래스에 위치하는 SRP 위반을 해소하기 위해 `utils/download.py`로 분리했습니다. 테스트는 `from utils.download import wait_for_download`로 직접 임포트합니다.
 
 ```python
 # utils/download.py
@@ -267,7 +263,7 @@ def wait_for_download(download_dir: Path, before_count: int, timeout: int = 60) 
 
 ### 6. LNB 안정화 — wait_for_lnb_loaded + get_lnb_hrefs 재시도
 
-**무엇을 했나.** LNB는 가상화(virtualization)로 렌더링되어 DOM 항목 수가 로드 중 변동합니다. `LnbComponent.wait_for_lnb_loaded()`는 항목 수가 3회 연속 동일할 때까지 폴링해 안정화를 기다리며, 타임아웃 시 `TimeoutError`를 발생시켜 침묵 실패를 방지합니다. `get_lnb_hrefs()`(구 `get_chat_hrefs()`)는 JS로 href를 원자적으로 수집합니다. 초기 구현에 포함했던 `StaleElementReferenceException` 재시도 로직은 `execute_script()`가 DOM 요소 참조를 반환하지 않아 실제로 발생하지 않는 dead code임을 확인하고 제거했습니다.
+**가상화 LNB의 항목 수가 3회 연속 동일해질 때까지 폴링해 안정화를 보장하고, 타임아웃 시 `TimeoutError`로 침묵 실패를 차단합니다.** LNB는 가상화(virtualization)로 렌더링되어 로드 중 DOM 항목 수가 변동합니다. `get_lnb_hrefs()`(구 `get_chat_hrefs()`)는 JS로 href를 원자적으로 수집합니다. 초기 구현의 `StaleElementReferenceException` 재시도 로직은 `execute_script()`가 DOM 요소 참조를 반환하지 않아 실제 발생하지 않는 dead code임을 확인하고 제거했습니다.
 
 ```python
 def wait_for_lnb_loaded(self, timeout: int = 10) -> None:
@@ -287,7 +283,7 @@ def wait_for_lnb_loaded(self, timeout: int = 10) -> None:
 
 ### 7. SSO 인증 우회 — CDP 쿠키 주입 + 30분 TTL 캐싱
 
-**무엇을 했나.** 매 테스트마다 발생하는 `account.elice.io → qaproject.elice.io` SSO 리다이렉트 비용(약 5~8초)을 제거하기 위해, 로그인 성공 시점의 쿠키를 30분 TTL 파일 캐시(`.pytest_cache/elice_session.json`)에 저장하고 이후 테스트에서는 캐시를 재사용합니다. 캐시가 만료되거나 로그인 검증에 실패하면 캐시를 즉시 무효화하고 정상 로그인 경로로 폴백하는 **self-healing** 구조입니다.
+**SSO 리다이렉트 5~8초를 제거하고, 캐시 만료·검증 실패 시 자동 재로그인하는 self-healing 구조입니다.** 로그인 성공 시점의 쿠키를 30분 TTL 파일 캐시(`.pytest_cache/elice_session.json`)에 저장하고, 이후 테스트는 `account.elice.io → qaproject.elice.io` SSO 리다이렉트 없이 캐시를 재사용합니다. 캐시가 만료되거나 로그인 검증에 실패하면 즉시 무효화하고 정상 로그인 경로로 폴백합니다.
 
 **왜 CDP인가 / Firefox 폴백.** Selenium의 표준 `driver.add_cookie()`는 해당 도메인을 먼저 방문해야만 동작합니다. Chromium 계열에서는 `Network.setCookie` CDP 커맨드로 도메인 진입 전에 쿠키를 주입해 이 문제를 해결합니다. Firefox는 CDP를 지원하지 않으므로 도메인 이동(`driver.get(base_url)`) 후 `add_cookie()`로 주입하는 폴백 경로를 분기 처리했습니다.
 
@@ -304,9 +300,9 @@ else:
 
 ### 8. 방어적 클릭 패턴 — React/MUI flaky test 흡수
 
-**무엇을 했나.** `BasePage.click()`은 `visibility → scrollIntoView → element_to_be_clickable → click()` 4단계를 거칩니다. `ElementClickInterceptedException` 또는 `StaleElementReferenceException` 발생 시 요소를 재조회한 뒤 JavaScript click으로 폴백합니다.
+**React/MUI SPA의 모달·리렌더 사이클에서 발생하는 인터셉트·스테일 예외만 폴백 경로로 처리해 flaky test를 줄이면서 실제 결함이 sleep 뒤에 가려지지 않도록 했습니다.** `BasePage.click()`은 `visibility → scrollIntoView → element_to_be_clickable → click()` 4단계를 거치며, `ElementClickInterceptedException` 또는 `StaleElementReferenceException` 발생 시 요소를 재조회한 뒤 JavaScript click으로 폴백합니다.
 
-**왜 이 방식인가.** 테스트 대상이 React + MUI로 구성된 SPA라 모달/툴팁/리렌더 사이클로 인해 일반 click이 가로채이거나 요소가 다시 부착되는 상황이 빈번합니다. "그냥 sleep을 늘린다" 대신 **인터셉트/스테일이라는 구체적인 예외만 폴백 경로로 처리**해, flaky test를 줄이면서 실제 결함이 sleep 뒤에 가려지지 않도록 했습니다.
+"그냥 sleep을 늘린다" 대신 **구체적인 예외 타입만 폴백 경로로 처리**하는 방식으로, 실제 결함이 sleep 뒤에 숨겨지지 않도록 했습니다.
 
 `BasePage`는 `wait_up_to(timeout)` 메서드도 제공합니다. 기존에는 AI 응답·PPT 생성처럼 긴 대기가 필요한 TC마다 `long_wait = WebDriverWait(authenticated_driver, n)`을 인라인으로 선언했으나, 이를 `chat_page.wait_up_to(n)`으로 교체해 드라이버 참조 중복을 제거하고 WebDriver 접근을 `BasePage` 한 곳으로 집약합니다.
 
@@ -322,13 +318,13 @@ long_wait = chat_page.wait_up_to(60)    # 일반 AI 응답 대기
 
 ### 9. 알려진 버그의 xfail + Allure issue 추적
 
-**무엇을 했나.** TC_009(다운로드 응답이 디스크에 저장되지 않는 결함)를 발견한 후, 테스트를 끄거나 주석 처리하지 않고 `@pytest.mark.xfail(reason=..., strict=True)`로 표시했습니다. `@allure.issue()`로 이슈 링크를 연결하고, `docs/bugs/TC_009/`에 재현 스크린샷·GIF를 보관해 Allure 첨부로 자동 연결합니다.
+**버그 수정 시 테스트가 XPASS로 빌드를 실패시켜 수정을 자동으로 감지합니다.** TC_009(다운로드 응답 미저장)를 skip·주석 처리 대신 `@pytest.mark.xfail(reason=..., strict=True)`로 파이프라인에 유지했습니다. `@allure.issue()`로 이슈 링크를 연결하고, `docs/bugs/TC_009/`의 재현 스크린샷·GIF를 Allure에 자동 첨부합니다.
 
-**왜 이 방식인가.** `strict=True`는 버그가 수정되어 테스트가 **예상 외로 통과(XPASS)할 경우 빌드를 실패**시킵니다. 회귀가 아닌 "수정"도 자동 감지되어 케이스를 정식 통과로 승격시키는 트리거가 됩니다.
+`strict=True`는 버그가 수정되어 **예상 외로 통과(XPASS)할 경우 빌드를 실패**시킵니다. 회귀가 아닌 "수정"도 자동 감지되어 케이스를 정식 통과로 승격시키는 트리거가 됩니다.
 
 ### 10. 실패 시 자동 스크린샷
 
-**무엇을 했나.** `pytest_runtest_makereport` hook을 `hookwrapper`로 감싸 `call`/`setup` 단계 어디에서 실패하든 드라이버를 추출해 스크린샷을 저장합니다. 이미지를 디스크(`reports/screenshots/`)와 Allure attach **양쪽에 동시 기록**해, Jenkins 빌드가 끝난 후에도 증거가 보존됩니다.
+**`call`·`setup` 어느 단계에서 실패하든 스크린샷을 디스크와 Allure 양쪽에 동시 기록해 빌드 종료 후에도 증거를 보존합니다.** `pytest_runtest_makereport` hook을 `hookwrapper`로 감싸 실패 단계를 감지하고 드라이버를 추출합니다.
 
 ```python
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -345,11 +341,11 @@ def pytest_runtest_makereport(item, call):
 
 ### 11. fixture scope의 의식적 분리
 
+자원별 비용과 격리 요구를 따로 판단해 `session`/`function`을 혼용했습니다.
+
 - `auth_token` → **`scope="session"`**: API 트랙 전체에서 1회 로드
 - `api_session` → **`scope="function"`**: 테스트별 헤더·연결 격리 후 close
 - `driver` / `authenticated_driver` / `temp_download_dir` → **`scope="function"`**: 브라우저·다운로드 경로 테스트 간 완전 격리
-
-자원별 비용과 격리 요구를 따로 판단해, `session`/`function`을 혼용하는 결정을 내렸습니다.
 
 **`seeded_chat` fixture — 사전 조건 준비 로직의 캡슐화.** TS-002처럼 "기존 대화가 이미 있는 상태"를 전제로 하는 TC는 테스트 본문에 사전 준비 로직이 섞이면 TC 핵심 시나리오가 묻힙니다. `seeded_chat`은 `authenticated_driver`를 받아 메시지를 하나 전송하고 AI 응답이 완료된 `ChatPage`를 반환합니다. TC는 반환된 인스턴스를 받아 검증에만 집중합니다.
 
@@ -370,7 +366,7 @@ def test_new_chat_and_history_preserved(self, seeded_chat):
 
 ### 12. Ruff 정적 분석 — CI 코드 품질 자동화
 
-**무엇을 했나.** GitHub Actions에 `Lint (Ruff)` job을 추가해 push마다 import 정렬(isort), 미사용 변수(`F401`), f-string 오용(`F541`), 공백 규칙(`E`/`W`) 등을 자동으로 검사합니다.
+**Lint job이 통과해야만 API · UI 테스트 job이 실행되어 코드 품질 문제를 조기 차단합니다.** GitHub Actions에 `Lint (Ruff)` job을 추가해 push마다 import 정렬(isort), 미사용 변수(`F401`), f-string 오용(`F541`), 공백 규칙(`E`/`W`) 등을 자동으로 검사합니다.
 
 ```toml
 # ruff.toml
@@ -389,7 +385,7 @@ lint:
 
 ### 13. API 음성(negative) 케이스 — 게이트웨이 409 래핑 분해
 
-**무엇을 했나.** 에이전트 API의 인증 검증(TS-006)은 양성 케이스뿐 아니라 세 가지 음성 시나리오를 포함합니다: 인증 헤더 완전 생략(TC_018), 서명 불일치 JWT(TC_019), 잘못된 인증 스킴 Basic(TC_020). TC_019에서 발견한 특이점은, 백엔드가 반환하는 403이 API 게이트웨이에 의해 **409로 래핑**된다는 점입니다. 단순 상태 코드 비교로는 인증 거부 여부를 판단할 수 없어, 409 응답 body를 역으로 파고들어 내부 상태를 확인합니다.
+**백엔드의 403이 게이트웨이에 의해 409로 래핑되는 구조를 분해해 인증 거부 여부를 응답 body에서 직접 검증합니다.** 인증 헤더 완전 생략(TC_018), 서명 불일치 JWT(TC_019), 잘못된 인증 스킴 Basic(TC_020) 세 가지 음성 시나리오를 포함하며, TC_019에서 단순 상태 코드 비교로는 인증 거부 여부를 판단할 수 없는 구조를 발견했습니다.
 
 ```python
 # TC_019 — 유효하지 않은 JWT 검증
@@ -523,6 +519,3 @@ allure serve allure-results
 - [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 16건 정리
 - [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)
 
----
-
-> 본 프로젝트는 **테스트 시간 = 비용**, **실패는 디버깅 가능해야 한다**, **자동화 ≠ 통과율 100%**, **운영 환경을 의식한다**는 네 가지 원칙으로 설계되었습니다.
