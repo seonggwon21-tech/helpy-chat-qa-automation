@@ -26,6 +26,20 @@
 
 ---
 
+## 목차
+
+- [데모](#데모)
+- [프로젝트 개요](#프로젝트-개요)
+- [기술 스택](#기술-스택)
+- [프로젝트 구조](#프로젝트-구조)
+- [테스트 구성](#테스트-구성)
+- [주요 구현 내용](#주요-구현-내용) — 설계·트러블슈팅 13선
+- [로컬 실행 방법](#로컬-실행-방법)
+- [테스트 결과](#테스트-결과)
+- [문서](#문서)
+
+---
+
 ## 데모
 
 | pytest 실행 (시작) | pytest 실행 (완료) |
@@ -148,6 +162,24 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 6개 TC, **총 20개 TC**.
 ---
 
 ## 주요 구현 내용
+
+> 설계 결정과 트러블슈팅 13건을 정리했습니다. 아래 표에서 관심 항목을 먼저 훑어보세요.
+
+| # | 구현 항목 | 한 줄 요약 |
+|---|---|---|
+| 1 | Component Object Pattern | ChatPage를 ChatInput·PlusMenu·Lnb 3컴포넌트로 분리 → UI 변경 시 수정 범위 최소화 |
+| 2 | 크로스 브라우저 | `--browser` 옵션 하나로 Chrome·Edge·Firefox 단독/동시 실행 자동 파라미터화 |
+| 3 | 파일 업로드 | `send_keys` 풀패스 주입으로 OS 파일 다이얼로그 우회 |
+| 4 | Firefox 타이밍 | 팝오버 닫힘 대기로 브라우저 간 렌더링 속도 차이 flaky 해결 |
+| 5 | 다운로드 감지 | Chrome `.crdownload` / Firefox `.part` 임시 확장자 병행 감지 |
+| 6 | LNB 안정화 | 가상화 대화 목록 로딩 재시도 + href 기준 검증 |
+| 7 | SSO 인증 우회 | CDP 쿠키 주입 + 30분 TTL 캐싱 → 매 테스트 로그인 5~8초 제거 |
+| 8 | 방어적 클릭 | visibility → scrollIntoView → clickable → JS fallback 4단계로 React/MUI flaky 흡수 |
+| 9 | xfail 버그 추적 | 알려진 버그를 skip이 아닌 `xfail(strict=True)`로 파이프라인에 유지 |
+| 10 | 자동 스크린샷 | 실패 단계 감지 후 디스크·Allure 동시 저장 |
+| 11 | fixture scope | `session`(드라이버 재사용) / `function`(상태 격리) 의식적 분리 |
+| 12 | Ruff 정적 분석 | import 정렬·미사용 변수 등 CI Lint job 자동화 |
+| 13 | API negative | 게이트웨이 409 래핑 분해로 인증 음성(negative) 케이스 검증 |
 
 ### 1. Component Object Pattern — ChatPage 역할별 분리
 
