@@ -20,6 +20,7 @@ __pycache__/
 # 리포트 결과물
 reports/
 allure-results/
+allure-report/
 
 # IDE
 .vscode/
