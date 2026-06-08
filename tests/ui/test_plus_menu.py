@@ -142,7 +142,7 @@ class TestPlusButtonMenu:
             logger.info("PPT 생성 모드 칩 노출 확인 완료")
 
         with allure.step("[TC_010] PPT 생성 프롬프트 입력 후 전송"):
-            inp.enter_text(inp.CHAT_INPUT, "QA 자동화에 대한 5슬라이드 PPT를 만들어줘.")
+            inp.enter_text(inp.CHAT_INPUT, "QA에 대해 간단한 3슬라이드 PPT를 만들어줘.")
             inp.click(inp.SEND_BUTTON)
             logger.info("PPT 생성 프롬프트 전송 완료")
 
