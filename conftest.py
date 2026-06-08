@@ -4,6 +4,7 @@ WebDriver 초기화, 공통 환경 변수 관리 담당.
 """
 
 import json
+import logging
 import os
 import platform
 import subprocess
@@ -26,11 +27,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from config.config import BASE_API_URL, BASE_UI_URL, DEFAULT_WAIT_TIME, TEST_USER
 from pages.login_page import LoginPage
 from pages.signup_page import SignupPage
-from utils.logger import get_custom_logger
 
 load_dotenv()
 
-logger = get_custom_logger(__name__)
+# 콘솔 로그는 pytest log_cli(log_cli=true)가 일원화한다.
+# 모듈별 StreamHandler를 직접 부착하면 log_cli와 중복 출력되므로,
+# 테스트·페이지 객체와 동일하게 표준 logging 로거를 사용한다.
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
@@ -336,6 +339,31 @@ def authenticated_driver(driver, base_url, test_user, browser):
             logger.info("만료된 쿠키 캐시 삭제 완료")
         pytest.fail("Fixture 사전 조건 설정 실패: 로그인 불가")
     return driver
+
+
+# =========================================================
+# [5-1] 새 대화가 시작된 ChatPage 제공 Fixture
+# =========================================================
+@pytest.fixture(scope="function")
+def fresh_chat(authenticated_driver):
+    """새 대화가 시작된 ChatPage 인스턴스를 반환합니다.
+
+    대부분의 UI 테스트가 '빈 새 대화 화면'을 출발점으로 하므로,
+    ChatPage 생성 + start_new_chat() 셋업을 fixture로 분리해
+    테스트 본문이 TC 검증에만 집중하도록 합니다.
+
+    드라이버가 필요하면 chat_page.driver 로 접근합니다.
+
+    Usage:
+        def test_something(self, fresh_chat):
+            chat_page = fresh_chat
+            inp = chat_page.chat_input
+    """
+    from pages.chat_page import ChatPage
+    chat_page = ChatPage(authenticated_driver)
+    chat_page.chat_input.start_new_chat()
+    logger.info("fresh_chat: 새 대화 시작 완료")
+    return chat_page
 
 
 # =========================================================

@@ -46,6 +46,22 @@ class LnbComponent(BasePage):
             time.sleep(0.3)
         raise TimeoutError(f"LNB 항목 수가 {timeout}초 내에 안정화되지 않았습니다.")
 
+    def find_item_by_id(self, chat_id: str):
+        """href에 주어진 chat_id를 포함하는 LNB 대화 항목 요소를 반환합니다.
+
+        특정 대화(예: 테스트가 직접 생성한 대화)만 타겟팅해 삭제할 때 사용합니다.
+        '첫 번째 항목'을 무작정 조작하면 다른 테스트·이전 실행이 만든 대화를
+        건드릴 수 있으므로, 자기 데이터만 다루도록 식별자로 항목을 특정합니다.
+
+        Returns:
+            일치하는 항목 WebElement. 없으면 None.
+        """
+        for item in self.driver.find_elements(*self.LNB_CHAT_ITEMS):
+            href = item.get_attribute("href") or ""
+            if chat_id in href:
+                return item
+        return None
+
     def get_lnb_hrefs(self) -> set[str]:
         """현재 LNB에 노출된 대화 항목의 href를 JS로 원자적으로 수집합니다.
 

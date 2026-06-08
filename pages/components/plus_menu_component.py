@@ -21,6 +21,13 @@ class PlusMenuComponent(BasePage):
     MENU_WEB_SEARCH = (By.CSS_SELECTOR, "li[role='menuitem']:has([data-testid='magnifying-glassIcon'])")
     FILE_INPUT = (By.CSS_SELECTOR, "input[type='file']")
     IMAGE_IN_RESPONSE = (By.CSS_SELECTOR, "div.elice-aichat__markdown img")
+    # 이미지 생성 응답(assistant 메시지) 위에 hover 시 노출되는 다운로드 버튼
+    RESPONSE_DOWNLOAD_BTN = (
+        By.CSS_SELECTOR,
+        "div[data-variant='assistant'] button:has(svg[data-testid='downloadIcon'])",
+    )
+    # PPT 생성 모드 선택 시 입력창에 노출되는 모드 칩
+    PPT_MODE_CHIP = (By.XPATH, "//*[normalize-space(text())='PPT 생성']")
     PPT_RESULT = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
     PPT_DOWNLOAD_BTN = (By.XPATH, "//button[contains(., '생성 결과 받기') or contains(., '생성 결과 다운받기')]")
 

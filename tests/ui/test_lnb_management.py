@@ -10,8 +10,6 @@ import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 
-from pages.chat_page import ChatPage
-
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.ui
 
@@ -22,8 +20,9 @@ pytestmark = pytest.mark.ui
 class TestLnbManagement:
 
     @allure.title("LNB 대화 항목 추가 → 새로고침 유지 → 삭제 시나리오")
-    def test_lnb_lifecycle(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
+    def test_lnb_lifecycle(self, fresh_chat):
+        chat_page = fresh_chat
+        driver = chat_page.driver
         inp = chat_page.chat_input
         lnb = chat_page.lnb
         long_wait = chat_page.wait_up_to(60)
@@ -49,27 +48,31 @@ class TestLnbManagement:
 
         with allure.step("[TC_013] 페이지 새로고침 후 신규 대화 유지 확인"):
             # set 순서가 비결정적이므로 현재 브라우저 URL에서 직접 ID 추출
-            new_chat_href = authenticated_driver.current_url
+            new_chat_href = driver.current_url
             new_chat_id = new_chat_href.rstrip("/").split("/")[-1]
-            authenticated_driver.refresh()
+            driver.refresh()
             lnb.wait_for_lnb_loaded()
             # URL로 채팅 유지 확인 (LNB 가상화로 DOM에 없는 항목도 정상 처리)
             long_wait.until(EC.url_contains(new_chat_id))
             logger.info("새로고침 후 LNB 신규 대화 유지 확인 완료")
 
-        with allure.step("[TC_014] LNB 첫 번째 항목 삭제 후 목록에서 제거 확인"):
-            long_wait.until(lambda d: len(d.find_elements(*lnb.LNB_CHAT_ITEMS)) > 0)
-            current_items = authenticated_driver.find_elements(*lnb.LNB_CHAT_ITEMS)
-            target_href = current_items[0].get_attribute("href")
+        with allure.step("[TC_014] 본 테스트가 생성한 대화 삭제 후 목록에서 제거 확인"):
+            # 임의의 '첫 항목'이 아니라 이 테스트가 만든 대화(new_chat_id)만 타겟팅한다.
+            #  - 독립성: 다른 테스트·이전 실행이 만든 대화를 건드리지 않음
+            #  - cleanup: 삭제가 곧 자기 생성 데이터 정리이므로 서버측 대화 누적 방지
+            target_item = chat_page.wait.until(
+                lambda d: lnb.find_item_by_id(new_chat_id)
+            )
+            target_href = target_item.get_attribute("href")
 
-            # hover → more 버튼 노출 → 클릭
-            ActionChains(authenticated_driver).move_to_element(current_items[0]).perform()
+            # hover → more 버튼 노출 → 클릭 (대상 항목 위에서만 액션 버튼이 노출됨)
+            ActionChains(driver).move_to_element(target_item).perform()
             lnb.click(lnb.LNB_MORE_BUTTON)
             lnb.click(lnb.LNB_DELETE_BUTTON)
             lnb.click(lnb.CONFIRM_DELETE_BUTTON)
 
-            # 카운트 대신 특정 URL이 LNB에서 사라졌는지 확인 (lazy-load 항목 보충 시 오차 방지)
+            # 카운트 대신 해당 URL이 LNB에서 사라졌는지 확인 (lazy-load 항목 보충 시 오차 방지)
             chat_page.wait.until(
                 lambda d: target_href not in lnb.get_lnb_hrefs()
             )
-            logger.info(f"LNB 대화 삭제 확인 완료: {target_href}")
+            logger.info(f"본 테스트 생성 대화 삭제·정리 완료: {target_href}")

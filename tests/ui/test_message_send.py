@@ -8,8 +8,6 @@ import logging
 import allure
 import pytest
 
-from pages.chat_page import ChatPage
-
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.ui
 
@@ -20,9 +18,8 @@ pytestmark = pytest.mark.ui
 class TestMessageSendFlow:
 
     @allure.title("전송 버튼 클릭 시 입력창 초기화 및 AI 응답 출력 확인")
-    def test_send_via_button_shows_ai_response(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
-        chat_page.chat_input.start_new_chat()
+    def test_send_via_button_shows_ai_response(self, fresh_chat):
+        chat_page = fresh_chat
 
         message = "소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘."
 

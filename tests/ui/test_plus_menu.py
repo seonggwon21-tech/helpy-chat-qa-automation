@@ -12,10 +12,8 @@ from pathlib import Path
 import allure
 import pytest
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
-from pages.chat_page import ChatPage
 from utils.download import wait_for_download
 
 logger = logging.getLogger(__name__)
@@ -31,10 +29,8 @@ BUG_EVIDENCE = Path(__file__).resolve().parents[2] / "docs" / "bugs" / "TC_009"
 class TestPlusButtonMenu:
 
     @allure.title("+ 버튼 클릭 시 4종 메뉴(파일 업로드·이미지 생성·PPT 생성·웹 검색) 노출 확인")
-    def test_plus_button_shows_all_menus(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
-        plus = chat_page.plus_menu
-        chat_page.chat_input.start_new_chat()
+    def test_plus_button_shows_all_menus(self, fresh_chat):
+        plus = fresh_chat.plus_menu
 
         with allure.step("[TC_007] + 버튼 클릭"):
             plus.open_menu()
@@ -54,11 +50,9 @@ class TestPlusButtonMenu:
 
     @allure.title("파일 업로드 선택 후 입력창에 첨부 칩 노출 확인")
     @pytest.mark.skipif(bool(os.getenv("CI")), reason="headless CI 환경에서 file input 미노출 — 로컬에서만 실행")
-    def test_file_upload_via_plus_menu(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
-        inp = chat_page.chat_input
-        plus = chat_page.plus_menu
-        inp.start_new_chat()
+    def test_file_upload_via_plus_menu(self, fresh_chat):
+        inp = fresh_chat.chat_input
+        plus = fresh_chat.plus_menu
 
         assert DUMMY_FILE.exists(), f"더미 파일이 존재하지 않습니다: {DUMMY_FILE}"
 
@@ -79,7 +73,7 @@ class TestPlusButtonMenu:
         reason="[BUG] TC_009: 이미지 다운로드 버튼 클릭 시 파일 미저장 — 수동 확인 시에도 동일 증상, 앱 버그",
         strict=True,
     )
-    def test_image_creation_via_plus_menu(self, authenticated_driver, temp_download_dir):
+    def test_image_creation_via_plus_menu(self, fresh_chat, temp_download_dir):
         """
         [TC-009] 이미지 생성 선택 후 프롬프트 전송 시 AI 응답에 이미지 출력 및 다운로드 확인
 
@@ -97,11 +91,10 @@ class TestPlusButtonMenu:
             if evidence_path.exists():
                 allure.attach.file(str(evidence_path), name=label, attachment_type=attach_type)
 
-        chat_page = ChatPage(authenticated_driver)
+        chat_page = fresh_chat
         long_wait = chat_page.wait_up_to(120)
         inp = chat_page.chat_input
         plus = chat_page.plus_menu
-        inp.start_new_chat()
 
         with allure.step("[TC_009] + 버튼 클릭 후 이미지 생성 메뉴 선택"):
             plus.select_plus_menu_item(plus.MENU_IMAGE_CREATE)
@@ -122,15 +115,11 @@ class TestPlusButtonMenu:
         with allure.step("[TC_009] 다운로드 버튼 클릭 후 파일 저장 확인 ← 버그 발생 지점"):
             before_count = len(list(temp_download_dir.iterdir()))
 
-            RESPONSE_DOWNLOAD_BTN = (
-                By.CSS_SELECTOR,
-                "div[data-variant='assistant'] button:has(svg[data-testid='downloadIcon'])",
-            )
-            ActionChains(authenticated_driver).move_to_element(image_element).perform()
+            ActionChains(chat_page.driver).move_to_element(image_element).perform()
             time.sleep(0.5)
 
-            download_btn = long_wait.until(EC.element_to_be_clickable(RESPONSE_DOWNLOAD_BTN))
-            ActionChains(authenticated_driver).move_to_element(download_btn).click().perform()
+            download_btn = long_wait.until(EC.element_to_be_clickable(plus.RESPONSE_DOWNLOAD_BTN))
+            ActionChains(chat_page.driver).move_to_element(download_btn).click().perform()
             logger.info("다운로드 버튼 클릭 완료")
 
             download_success = wait_for_download(temp_download_dir, before_count)
@@ -139,20 +128,18 @@ class TestPlusButtonMenu:
 
     @allure.title("PPT 생성 선택 후 프롬프트 전송 시 결과 노출 및 다운로드 확인")
     @pytest.mark.slow
-    def test_ppt_creation_via_plus_menu(self, authenticated_driver, temp_download_dir):
-        chat_page = ChatPage(authenticated_driver)
+    def test_ppt_creation_via_plus_menu(self, fresh_chat, temp_download_dir):
+        chat_page = fresh_chat
         long_wait = chat_page.wait_up_to(600)
         inp = chat_page.chat_input
         plus = chat_page.plus_menu
-        inp.start_new_chat()
 
         with allure.step("[TC_010] + 버튼 클릭 후 PPT 생성 메뉴 선택"):
             plus.select_plus_menu_item(plus.MENU_PPT_CREATE)
             logger.info("PPT 생성 메뉴 클릭 완료")
 
         with allure.step("[TC_010] 입력창에 PPT 생성 모드 칩 노출 확인"):
-            PPT_MODE_CHIP = (By.XPATH, "//*[normalize-space(text())='PPT 생성']")
-            inp.wait.until(EC.presence_of_element_located(PPT_MODE_CHIP))
+            inp.wait.until(EC.presence_of_element_located(plus.PPT_MODE_CHIP))
             logger.info("PPT 생성 모드 칩 노출 확인 완료")
 
         with allure.step("[TC_010] PPT 생성 프롬프트 입력 후 전송"):
@@ -169,7 +156,7 @@ class TestPlusButtonMenu:
             before_count = len(list(temp_download_dir.iterdir()))
 
             download_btn = long_wait.until(EC.element_to_be_clickable(plus.PPT_DOWNLOAD_BTN))
-            authenticated_driver.execute_script(
+            chat_page.driver.execute_script(
                 "arguments[0].scrollIntoView({block:'center'});", download_btn
             )
             time.sleep(0.3)
@@ -181,12 +168,10 @@ class TestPlusButtonMenu:
             logger.info("PPT 다운로드 파일 저장 확인 완료")
 
     @allure.title("웹 검색 선택 후 검색어 전송 시 AI 응답 및 결과 텍스트 확인")
-    def test_web_search_via_plus_menu(self, authenticated_driver):
-        chat_page = ChatPage(authenticated_driver)
-        long_wait = chat_page.wait_up_to(60)
+    def test_web_search_via_plus_menu(self, fresh_chat):
+        chat_page = fresh_chat
         inp = chat_page.chat_input
         plus = chat_page.plus_menu
-        inp.start_new_chat()
 
         with allure.step("[TC_011] + 버튼 클릭 후 웹 검색 메뉴 선택"):
             plus.select_plus_menu_item(plus.MENU_WEB_SEARCH)
@@ -198,9 +183,7 @@ class TestPlusButtonMenu:
             logger.info("웹 검색어 전송 완료")
 
         with allure.step("[TC_011] AI 응답 텍스트 노출 확인"):
-            response_text = long_wait.until(
-                EC.visibility_of_element_located(inp.AI_MESSAGE_CONTENT)
-            ).text
+            response_text = inp.wait_for_ai_response()
             assert response_text and len(response_text.strip()) > 0, \
                 "웹 검색 후 AI 응답 텍스트가 출력되지 않았습니다."
             logger.info(f"AI 응답 출력 확인 완료: '{response_text[:80]}...'")
