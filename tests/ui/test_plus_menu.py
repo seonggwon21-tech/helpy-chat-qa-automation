@@ -51,7 +51,6 @@ class TestPlusButtonMenu:
     @allure.title("파일 업로드 선택 후 입력창에 첨부 칩 노출 확인")
     @pytest.mark.skipif(bool(os.getenv("CI")), reason="headless CI 환경에서 file input 미노출 — 로컬에서만 실행")
     def test_file_upload_via_plus_menu(self, fresh_chat):
-        inp = fresh_chat.chat_input
         plus = fresh_chat.plus_menu
 
         assert DUMMY_FILE.exists(), f"더미 파일이 존재하지 않습니다: {DUMMY_FILE}"
