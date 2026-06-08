@@ -32,21 +32,13 @@
 
 ## 데모
 
-**테스트 실행 장면**
+**테스트 코드 & 실행**
 
 ![Test Run Demo](docs/images/demo_test_run.gif)
 
-**pytest 로그 — 시작 → 완료**
+**실행 결과 — Jenkins CI (빌드 성공 · 실패 0)**
 
-| 시작 | 완료 |
-|---|---|
-| ![pytest start](docs/images/pytest_start.gif) | ![pytest end](docs/images/pytest_end.gif) |
-
-**CI · 리포트**
-
-| Jenkins CI 빌드 성공 | Allure 리포트 |
-|---|---|
-| ![Jenkins Build Success](docs/images/jenkins-success.png) | ![Allure Report](docs/images/allure-report.png) |
+![Jenkins Build Success](docs/images/jenkins-success.png)
 
 ---
 
