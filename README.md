@@ -124,7 +124,7 @@ helpy-chat-qa-automation/
 │   ├── images/                # README 데모 이미지
 │   ├── test_cases.csv         # TC/TS 전체 목록
 │   ├── bug-report.md          # 발견 결함 5건
-│   └── troubleshooting.md     # 트러블슈팅 기록 (20건)
+│   └── troubleshooting.md     # 트러블슈팅 기록 (21건)
 ├── reports/                   # 실패 시 자동 저장되는 스크린샷
 ├── allure-results/            # Allure raw 데이터 (environment.properties 포함)
 ├── .github/
@@ -579,6 +579,6 @@ allure serve allure-results
 ## 문서
 
 - [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 5건 정리 (BUG-005: 이미지 다운로드 미동작, xfail 처리)
-- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 20건 정리 (#20: CI Lint 게이트가 리팩터링 후 미사용 변수 차단)
+- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 21건 정리 (#20: CI Lint 게이트가 미사용 변수 차단 / #21: CI 부하발 AI 응답 타임아웃 안정화)
 - [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)
 

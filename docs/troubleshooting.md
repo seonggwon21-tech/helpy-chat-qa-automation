@@ -575,3 +575,38 @@ def test_file_upload_via_plus_menu(self, fresh_chat):
 **교훈**  
 - Lint job이 테스트 job 앞단에서 게이트 역할을 하도록 구성한 파이프라인(README 주요 구현 #12)이, 실제로 품질 결함을 **테스트 단계 진입 전에 차단**함을 검증한 사례. CI 설계 의도가 운영에서 그대로 작동했음.  
 - 리팩터링으로 변수 셋업 위치를 옮기면 옮겨진 쪽에 미사용 변수(F841)·미사용 import(F401)가 남기 쉬움. 기능 검증(compile·collect)은 이를 잡지 못하므로, **push 전 로컬에서 `python -m ruff check .`를 반드시 실행**할 것.
+
+---
+
+## 21. AI 응답 대기 — CI 부하에서 60초 타임아웃 재발 (TC_012)
+
+**현상**  
+GitHub Actions UI 테스트 `test_lnb_lifecycle`(TC_012)가 메시지 전송 직후 AI 응답 완료 대기에서 `TimeoutException`. 60초를 초과해 실패.
+
+```
+tests/ui/test_lnb_management.py:42: in test_lnb_lifecycle
+    long_wait.until(EC.visibility_of_element_located(inp.AI_MESSAGE_CONTENT))
+selenium.common.exceptions.TimeoutException
+```
+
+**원인**  
+트러블슈팅 #10에서 이 지점을 `10초 → 60초`로 한 번 늘렸으나, CI 러너 부하와 **가변적 프롬프트(`"LNB 목록 관리 테스트"`)** 가 겹쳐 응답 완료(`data-status='complete'`)가 60초를 초과함.  
+같은 실행의 다른 send 테스트들은 `"…10글자 이내로 짧게 설명해줘"` 류 프롬프트로 약 5초 내에 완료된 것을 확인 — **AI 응답의 길이·완료 시점은 프롬프트의 결정성에 크게 좌우**됨. 첫 단계(전송 → LNB 새 항목 등장)는 통과했으므로 전송 자체는 정상이었고, 순수하게 응답 완료 대기만 실패.
+
+**해결**  
+① 출력 길이를 제약하는 짧은-응답 유도형 프롬프트로 교체, ② AI 응답 대기를 통일 메서드 `wait_for_ai_response(120)`로 변경(`60 → 120`초 헤드룸 + 대기 경로 일원화).
+
+```python
+# 수정 전
+chat_page.send_message("LNB 목록 관리 테스트")
+...
+long_wait.until(EC.visibility_of_element_located(inp.AI_MESSAGE_CONTENT))
+
+# 수정 후
+chat_page.send_message("소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘.")  # 짧은 응답 유도
+...
+inp.wait_for_ai_response(120)   # 통일된 대기 메서드 + CI 부하 대비 헤드룸
+```
+
+**교훈**  
+AI 응답처럼 **비결정적 비동기 결과**를 기다릴 때는, 단순히 타임아웃만 늘리지 말고 ① 출력 길이를 제약하는 프롬프트로 완료 시점을 안정화하고 ② CI 부하를 감안한 헤드룸을 함께 둘 것. 타임아웃 증가만으로는 프롬프트 변동성에서 오는 flaky를 근본적으로 잡지 못함.
