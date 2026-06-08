@@ -32,14 +32,16 @@ class TestLnbManagement:
         logger.info(f"초기 LNB 항목 수: {len(initial_hrefs)}")
 
         with allure.step("[TC_012] 메시지 전송 후 LNB에 새 항목 추가 확인"):
-            chat_page.send_message("LNB 목록 관리 테스트")
+            # 짧은 응답을 유도하는 프롬프트로 AI 응답 완료 시점을 안정화(CI flaky 방지)
+            chat_page.send_message("소프트웨어 QA에 대해 10글자 이내로 짧게 설명해줘.")
             # JS로 href를 원자적으로 수집 — LNB 동적 갱신 중 StaleElementReferenceException 방지
             long_wait.until(
                 lambda d: any(
                     href not in initial_hrefs for href in lnb.get_lnb_hrefs()
                 )
             )
-            long_wait.until(EC.visibility_of_element_located(inp.AI_MESSAGE_CONTENT))
+            # AI 응답 완료 대기는 통일된 wait_for_ai_response 사용. CI 부하 대비 120초 헤드룸.
+            inp.wait_for_ai_response(120)
 
             after_hrefs = lnb.get_lnb_hrefs()
             new_hrefs = after_hrefs - initial_hrefs
