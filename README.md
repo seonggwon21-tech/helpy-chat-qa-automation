@@ -86,7 +86,7 @@ Page Object Model 위에 Component Object Pattern을 얹어 UI 영역별 책임�
 | 정적 분석 | Ruff | import 정렬·미사용 변수·f-string 등 코드 품질 자동 검사, CI Lint job으로 push마다 실행 |
 | CI/CD | Jenkins + GitHub Actions | Jenkins: UI·API 분리 실행 + Allure publish / GHA: Lint → API Tests → UI Tests 3-job 파이프라인 |
 | 환경 관리 | python-dotenv | `.env`로 자격증명·URL을 코드와 분리, `.gitignore` 처리 |
-| 로깅 | Python logging | 공통 로거로 테스트 흐름을 stdout에 기록, `LOG_FILE` 환경변수로 파일 로그 추가 가능 |
+| 로깅 | Python logging + pytest log_cli | 테스트·페이지 객체·conftest를 표준 `logging`으로 통일하고, `log_cli=true`로 콘솔 출력을 단일화 — 모듈별 핸들러 부착에 따른 중복 출력을 방지 |
 
 ---
 
@@ -117,7 +117,6 @@ helpy-chat-qa-automation/
 ├── test_data/
 │   └── test_upload.txt        # 파일 업로드 TC용 더미 파일
 ├── utils/
-│   ├── logger.py              # 공통 로거 (LOG_FILE 환경변수로 파일 핸들러 활성화)
 │   └── download.py            # 다운로드 완료 감지 (Chrome .crdownload / Firefox .part 병행)
 ├── docs/
 │   ├── bugs/
@@ -125,7 +124,7 @@ helpy-chat-qa-automation/
 │   ├── images/                # README 데모 이미지
 │   ├── test_cases.csv         # TC/TS 전체 목록
 │   ├── bug-report.md          # 발견 결함 5건
-│   └── troubleshooting.md     # 트러블슈팅 기록 (16건)
+│   └── troubleshooting.md     # 트러블슈팅 기록 (20건)
 ├── reports/                   # 실패 시 자동 저장되는 스크린샷
 ├── allure-results/            # Allure raw 데이터 (environment.properties 포함)
 ├── .github/
@@ -172,12 +171,12 @@ UI 5개 시나리오 14개 TC + API 1개 시나리오 6개 TC, **총 20개 TC**.
 | 3 | 파일 업로드 | `send_keys` 풀패스 주입으로 OS 파일 다이얼로그 우회 |
 | 4 | Firefox 타이밍 | 팝오버 닫힘 대기로 브라우저 간 렌더링 속도 차이 flaky 해결 |
 | 5 | 다운로드 감지 | Chrome `.crdownload` / Firefox `.part` 임시 확장자 병행 감지 |
-| 6 | LNB 안정화 | 가상화 대화 목록 로딩 재시도 + href 기준 검증 |
+| 6 | LNB 안정화·삭제 독립성 | 가상화 목록 안정화 + 자기 생성 대화만 삭제(독립성·cleanup 겸용) |
 | 7 | SSO 인증 우회 | CDP 쿠키 주입 + 30분 TTL 캐싱 → 매 테스트 로그인 5~8초 제거 |
 | 8 | 방어적 클릭 | visibility → scrollIntoView → clickable → JS fallback 4단계로 React/MUI flaky 흡수 |
 | 9 | xfail 버그 추적 | 알려진 버그를 skip이 아닌 `xfail(strict=True)`로 파이프라인에 유지 |
 | 10 | 자동 스크린샷 | 실패 단계 감지 후 디스크·Allure 동시 저장 |
-| 11 | fixture scope | `session`(드라이버 재사용) / `function`(상태 격리) 의식적 분리 |
+| 11 | fixture 설계 | scope 분리(session/function) + fresh_chat·seeded_chat로 셋업 캡슐화·DRY |
 | 12 | Ruff 정적 분석 | import 정렬·미사용 변수 등 CI Lint job 자동화 |
 | 13 | API negative | 게이트웨이 409 래핑 분해로 인증 음성(negative) 케이스 검증 |
 
@@ -205,6 +204,8 @@ ChatPage (조율자)
 다운로드 완료 감지(`wait_for_download`)는 특정 UI 영역과 무관한 유틸리티라 `utils/download.py`로 따로 뺐습니다.
 
 **왜 이 구조가 좋은가.** UI가 바뀌었을 때 수정 범위가 명확해집니다. + 버튼 위치가 바뀌면 `PlusMenuComponent`만 열면 됩니다. 분리 전에는 어디를 고쳐야 하는지 `ChatPage` 전체를 읽어야 했습니다.
+
+이 원칙을 끝까지 지키기 위해, 테스트 본문에 임시로 흩어져 있던 로케이터(이미지 응답 다운로드 버튼·PPT 모드 칩)도 모두 해당 컴포넌트의 클래스 속성으로 끌어올렸습니다. 그 결과 **모든 로케이터는 예외 없이 Page/Component 객체에만 존재**하고, 테스트는 동작과 검증에만 집중합니다.
 
 ### 2. 크로스 브라우저 지원 — pytest_addoption + pytest_generate_tests
 
@@ -240,7 +241,8 @@ browser  (pytest_generate_tests가 값 주입)
   └── temp_download_dir  (tmp_path 기반 브라우저별 격리 디렉터리)
         └── driver  (Chrome | Edge | Firefox 인스턴스 생성)
               └── authenticated_driver  (SSO 쿠키 캐싱 → 로그인 검증)
-                    ├── seeded_chat  (사전 대화 생성 → ChatPage 반환)
+                    ├── fresh_chat   (새 대화 시작된 ChatPage → 대다수 UI TC의 출발점)
+                    ├── seeded_chat  (사전 대화 생성된 ChatPage → '기존 대화 존재' 전제 TC)
                     └── 개별 테스트 (test_*)
 ```
 
@@ -317,6 +319,17 @@ def wait_for_lnb_loaded(self, timeout: int = 10) -> None:
 
 **왜 이 방식인가.** 단순 `until(lambda d: len(...) > 0)` 조건은 첫 항목이 렌더링되자마자 통과합니다. 가상화 LNB는 스크롤·리렌더 중에도 항목 수가 변하므로 3회 안정화 확인이 필요합니다. `TimeoutError` raise는 LNB가 끝까지 안정화되지 않을 때 원인 불명의 assertion 실패 대신 명확한 타임아웃 메시지를 남깁니다.
 
+**삭제 TC의 독립성 — 자기 생성 대화만 타겟팅(cleanup 겸용).** 같은 테스트 계정에는 다른 TC·이전 실행이 만든 대화가 서버측에 누적됩니다. 초기 TC_014는 LNB '첫 번째 항목'을 삭제했는데, 이는 자기가 만들지 않은 데이터를 건드려 병렬·부분 실행 시 깨질 수 있는 교차 결합이었습니다. `LnbComponent.find_item_by_id()`를 추가해 **이 테스트가 직접 생성한 대화(`new_chat_id`)만 찾아 삭제**하도록 한정했습니다. 자기 데이터만 다루므로 독립성이 보장되고, 삭제가 곧 생성 데이터 정리가 되어 대화 누적도 방지합니다.
+
+```python
+# 임의의 첫 항목이 아니라, 이 테스트가 만든 대화만 삭제
+target_item = chat_page.wait.until(lambda d: lnb.find_item_by_id(new_chat_id))
+target_href = target_item.get_attribute("href")
+ActionChains(driver).move_to_element(target_item).perform()
+lnb.click(lnb.LNB_MORE_BUTTON); lnb.click(lnb.LNB_DELETE_BUTTON); lnb.click(lnb.CONFIRM_DELETE_BUTTON)
+chat_page.wait.until(lambda d: target_href not in lnb.get_lnb_hrefs())   # 자기 대화 소멸 확인
+```
+
 ### 7. SSO 인증 우회 — CDP 쿠키 주입 + 30분 TTL 캐싱
 
 **SSO 리다이렉트 5~8초를 제거하고, 캐시 만료·검증 실패 시 자동 재로그인하는 self-healing 구조입니다.** 로그인 성공 시점의 쿠키를 30분 TTL 파일 캐시(`.pytest_cache/elice_session.json`)에 저장하고, 이후 테스트는 `account.elice.io → qaproject.elice.io` SSO 리다이렉트 없이 캐시를 재사용합니다. 캐시가 만료되거나 로그인 검증에 실패하면 즉시 무효화하고 정상 로그인 경로로 폴백합니다.
@@ -349,8 +362,9 @@ def wait_up_to(self, timeout: int) -> WebDriverWait:
 
 # 테스트에서
 long_wait = chat_page.wait_up_to(600)   # PPT 생성 최대 대기
-long_wait = chat_page.wait_up_to(60)    # 일반 AI 응답 대기
 ```
+
+**AI 응답 대기는 단일 메서드로 통일.** 일부 TC는 응답 완료를 `long_wait.until(EC.visibility_of_element_located(AI_MESSAGE_CONTENT)).text`처럼 직접 풀어 썼고, 다른 TC는 `ChatInputComponent.wait_for_ai_response()`를 호출하는 등 같은 동작을 세 가지 방식으로 기다리고 있었습니다. 이미 존재하던 `wait_for_ai_response()` 한 경로로 모두 수렴시켜, "AI 응답을 어떻게 기다리는가"가 코드베이스 전체에서 한 가지로 일관되도록 정리했습니다.
 
 ### 9. 알려진 버그의 xfail + Allure issue 추적
 
@@ -383,20 +397,30 @@ def pytest_runtest_makereport(item, call):
 - `api_session` → **`scope="function"`**: 테스트별 헤더·연결 격리 후 close
 - `driver` / `authenticated_driver` / `temp_download_dir` → **`scope="function"`**: 브라우저·다운로드 경로 테스트 간 완전 격리
 
-**`seeded_chat` fixture — 사전 조건 준비 로직의 캡슐화.** TS-002처럼 "기존 대화가 이미 있는 상태"를 전제로 하는 TC는 테스트 본문에 사전 준비 로직이 섞이면 TC 핵심 시나리오가 묻힙니다. `seeded_chat`은 `authenticated_driver`를 받아 메시지를 하나 전송하고 AI 응답이 완료된 `ChatPage`를 반환합니다. TC는 반환된 인스턴스를 받아 검증에만 집중합니다.
+**사전 조건 fixture 2종 — 셋업 로직의 캡슐화로 DRY 확보.** 대다수 UI TC는 매 함수 첫머리에서 `ChatPage(authenticated_driver)` 생성 → 컴포넌트 추출 → `start_new_chat()`라는 동일한 4~5줄을 반복하고 있었습니다. 이 출발점 상태를 두 개의 fixture로 분리해, 테스트 본문이 TC 핵심 시나리오에만 집중하도록 했습니다.
+
+- **`fresh_chat`** — "빈 새 대화 화면"을 전제로 하는 대다수 TC용. `ChatPage` 생성 + `start_new_chat()`까지 끝낸 인스턴스를 반환합니다. 도입 후 UI 테스트 8곳의 셋업 보일러플레이트가 인자 한 줄로 축소됐습니다.
+- **`seeded_chat`** — TS-002처럼 "기존 대화가 이미 있는 상태"를 전제로 하는 TC용. 메시지를 하나 전송하고 AI 응답까지 완료된 `ChatPage`를 반환합니다.
+
+두 fixture 모두 `ChatPage`를 반환하므로 `chat_page.driver`로 드라이버에도 접근할 수 있어, 테스트가 `authenticated_driver`를 직접 인자로 받을 필요가 없습니다.
 
 ```python
+@pytest.fixture(scope="function")
+def fresh_chat(authenticated_driver):
+    chat_page = ChatPage(authenticated_driver)
+    chat_page.chat_input.start_new_chat()   # 새 대화 출발점까지 셋업
+    return chat_page
+
 @pytest.fixture(scope="function")
 def seeded_chat(authenticated_driver):
     chat_page = ChatPage(authenticated_driver)
     chat_page.send_message("안녕하세요, 대화 보존 테스트입니다.")
-    chat_page.wait_for_ai_response()
-    return chat_page   # driver 속성도 접근 가능: seeded_chat.driver
+    chat_page.wait_for_ai_response()        # 기존 대화가 존재하는 상태
+    return chat_page
 
 # 테스트에서는 사전 준비 없이 바로 TC 검증
-def test_new_chat_and_history_preserved(self, seeded_chat):
-    chat_page = seeded_chat
-    inp.start_new_chat()          # TC_002 시작
+def test_send_via_button_shows_ai_response(self, fresh_chat):
+    chat_page = fresh_chat                  # 셋업 끝, 바로 검증 시작
     ...
 ```
 
@@ -466,8 +490,11 @@ cp .env.example .env
 TEST_USER_ID=your_email@example.com
 TEST_USER_PW=your_password
 
-# API 인증 토큰 (브라우저 Network 탭 Authorization 헤더에서 복사)
-AUTH_TOKEN=your_bearer_token
+# UI 대상 URL (호스트 루트만 — 미설정 시 config.py 기본값 사용)
+BASE_UI_URL=https://qaproject.elice.io
+
+# API 인증 토큰 (Bearer 접두사 포함, 브라우저 Network 탭 Authorization 헤더에서 복사)
+AUTH_TOKEN=Bearer your_token_here
 
 # API 엔드포인트
 BASE_API_URL=https://your-api-domain.com
@@ -552,6 +579,6 @@ allure serve allure-results
 ## 문서
 
 - [버그 리포트](docs/bug-report.md) — 테스트 중 발견된 결함 5건 정리 (BUG-005: 이미지 다운로드 미동작, xfail 처리)
-- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 16건 정리
+- [트러블슈팅 기록](docs/troubleshooting.md) — 자동화 구축 중 발생한 이슈 20건 정리 (#20: CI Lint 게이트가 리팩터링 후 미사용 변수 차단)
 - [테스트 케이스 목록](docs/test_cases.csv) — TC/TS 전체 목록 (노션 DB 연동용)
 

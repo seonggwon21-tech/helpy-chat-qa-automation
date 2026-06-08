@@ -538,3 +538,40 @@ def _cookie_cache_path(browser: str) -> Path:
 
 **교훈**  
 브라우저 파라미터화처럼 동일 픽스처가 여러 값으로 실행되는 경우, 파일·상태를 공유하는 전역 리소스는 파라미터별로 격리해야 함.
+
+---
+
+## 20. CI Lint 게이트 — `fresh_chat` 리팩터링이 남긴 미사용 변수(F841)를 GitHub Actions가 차단
+
+**현상**  
+테스트 셋업 중복 제거를 위해 `fresh_chat` fixture를 도입한 뒤 push했더니, GitHub Actions의 Lint(Ruff) job이 실패하며 이후 테스트 job이 실행되지 않음.
+
+```
+F841 Local variable `inp` is assigned to but never used
+  --> tests/ui/test_plus_menu.py:54:9
+   |
+54 |         inp = fresh_chat.chat_input
+   |         ^^^
+```
+
+**원인**  
+`test_file_upload_via_plus_menu`에서 `inp.start_new_chat()` 호출을 `fresh_chat` fixture 안으로 옮기면서, 그 호출을 위해 선언했던 `inp = fresh_chat.chat_input`이 더 이상 사용되지 않게 됨.  
+`python -m py_compile`과 `pytest --collect-only`는 모두 통과하므로(문법·수집상 결함 없음) **기능 검증만으로는 드러나지 않는, 정적 분석 전용 영역의 결함**이었음.
+
+**해결**  
+미사용 라인 제거. 이후 로컬에 ruff를 설치하고 `python -m ruff check .` → `All checks passed` 확인 후 재push해 CI 복구.
+
+```python
+# 수정 전
+def test_file_upload_via_plus_menu(self, fresh_chat):
+    inp = fresh_chat.chat_input     # start_new_chat()이 fixture로 이동하며 미사용
+    plus = fresh_chat.plus_menu
+
+# 수정 후
+def test_file_upload_via_plus_menu(self, fresh_chat):
+    plus = fresh_chat.plus_menu
+```
+
+**교훈**  
+- Lint job이 테스트 job 앞단에서 게이트 역할을 하도록 구성한 파이프라인(README 주요 구현 #12)이, 실제로 품질 결함을 **테스트 단계 진입 전에 차단**함을 검증한 사례. CI 설계 의도가 운영에서 그대로 작동했음.  
+- 리팩터링으로 변수 셋업 위치를 옮기면 옮겨진 쪽에 미사용 변수(F841)·미사용 import(F401)가 남기 쉬움. 기능 검증(compile·collect)은 이를 잡지 못하므로, **push 전 로컬에서 `python -m ruff check .`를 반드시 실행**할 것.
