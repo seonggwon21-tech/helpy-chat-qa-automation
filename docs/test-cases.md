@@ -51,7 +51,7 @@
 | TC ID | 테스트 케이스 | 검증 항목 | 결과 |
 |---|---|---|:---:|
 | TC_007 | + 버튼 클릭 시 4종 메뉴 노출 | 파일 업로드·이미지 생성·PPT 생성·웹 검색 메뉴 표시 | ✅ PASS |
-| TC_008 | 파일 업로드 후 입력창 첨부 칩 노출 | file input 경로 전달 / 첨부 칩 `is_displayed` | ✅ PASS |
+| TC_008 | 파일 업로드 후 입력창 첨부 칩 노출 | file input 경로 전달 / 첨부 칩 `is_displayed` | ⏭️ SKIP *(CI)* |
 | TC_009 | 이미지 생성 후 다운로드 버튼 클릭 시 파일 저장 | 이미지 응답 노출 / 다운로드 후 파일 개수 증가 | ⚠️ XFAIL *(앱 버그)* |
 | TC_010 | PPT 생성 후 결과 노출 및 다운로드 | PPT 결과 버튼 노출 / 다운로드 후 파일 개수 증가 | ✅ PASS |
 | TC_011 | 웹 검색 후 AI 응답 충분성 *(경계값)* | AI 응답 텍스트 존재 / `len > 50` | ✅ PASS |
@@ -72,7 +72,13 @@
 | TC_016 | `GET /agent/count` 200 및 count 정수 | status 200 / count 타입 `int` / `count >= 0` | ✅ PASS |
 | TC_017 | `GET /agent/{id}` 200 및 상세 구조 | status 200 / 응답 타입 `dict` / id 일치 | ✅ PASS |
 | TC_018 | 인증 헤더 없이 요청 시 거부 *(네거티브)* | status `401` 또는 `403` | ✅ PASS |
+| TC_019 | 유효하지 않은 토큰(만료·변조 JWT)으로 요청 시 거부 *(네거티브)* | status `401`/`403`/`409` (게이트웨이가 403을 409로 래핑 → inner `_result.status_code == 403` 확인) | ✅ PASS |
+| TC_020 | 잘못된 인증 스킴(Basic)으로 요청 시 거부 *(네거티브)* | status `401` 또는 `403` | ✅ PASS |
 
 ---
 
+> ⏭️ **TC_008 (SKIP)** — 파일 업로드는 헤드리스 CI 환경에서 OS 파일 선택창 제약으로 file input이 노출되지 않아 `@pytest.mark.skipif(CI)`로 **CI에서만 skip**, 로컬에서는 정상 통과합니다. (CI 결과 표기 `1 skip`이 이 케이스)
+>
 > ⚠️ **TC_009 (XFAIL)** — 이미지 생성 결과 다운로드 미저장은 앱 자체 결함으로, skip이 아닌 `@pytest.mark.xfail(strict=True)`로 파이프라인에 유지해 수정 시 자동 감지되게 했습니다. 상세는 [버그 리포트 BUG-005](bug-report.md) 참고.
+>
+> → CI 기준 결과: **18 passed · 1 skip(TC_008) · 1 xfail(TC_009) · 0 fail** = 20 TC
