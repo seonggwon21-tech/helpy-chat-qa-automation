@@ -82,3 +82,27 @@
 > ⚠️ **TC_009 (XFAIL)** — 이미지 생성 결과 다운로드 미저장은 앱 자체 결함으로, skip이 아닌 `@pytest.mark.xfail(strict=True)`로 파이프라인에 유지해 수정 시 자동 감지되게 했습니다. 상세는 [버그 리포트 BUG-005](bug-report.md) 참고.
 >
 > → CI 기준 결과: **18 passed · 1 skip(TC_008) · 1 xfail(TC_009) · 0 fail** = 20 TC
+
+---
+
+## 3. 테스트 함수 ↔ TC 매핑 (13 함수 = 20 TC)
+
+pytest 함수는 **13개**, 검증하는 테스트 케이스는 **20개**입니다. 연속된 사용자 흐름은 상태를 공유하는 **하나의 시나리오 함수**로 묶어, 흐름 안에서 여러 TC를 단계(`allure.step`)로 검증했기 때문입니다. (예: 입력 → 전송 → 응답을 한 함수에서 순차 확인)
+
+| 테스트 함수 | 검증 TC | 비고 |
+|---|---|---|
+| `test_send_via_button_shows_ai_response` | TC_001 | |
+| `test_new_chat_and_history_preserved` | TC_002, TC_003 | 새 대화 → 기존 대화 복원 흐름 |
+| `test_input_features_scenario` | TC_004, TC_005, TC_006 | 빈 입력·Shift+Enter·Enter 전송 |
+| `test_plus_button_shows_all_menus` | TC_007 | |
+| `test_file_upload_via_plus_menu` | TC_008 | CI skip |
+| `test_image_creation_via_plus_menu` | TC_009 | xfail (앱 버그) |
+| `test_ppt_creation_via_plus_menu` | TC_010 | |
+| `test_web_search_via_plus_menu` | TC_011 | |
+| `test_lnb_lifecycle` | TC_012, TC_013, TC_014 | 추가 → 유지 → 삭제 라이프사이클 |
+| `test_agent_read_flow` | TC_015, TC_016, TC_017 | 목록 → 수 → 상세 조회 플로우 |
+| `test_unauthorized_returns_401_or_403` | TC_018 | |
+| `test_invalid_token_returns_auth_error` | TC_019 | |
+| `test_wrong_auth_scheme_returns_401_or_403` | TC_020 | |
+
+> 13개 함수(UI 9 · API 4) → 20개 TC(UI 14 · API 6). 시나리오 통합 함수 4개(`new_chat`·`input_features`·`lnb_lifecycle`·`agent_read_flow`)가 여러 TC를 묶어 함수 수와 TC 수의 차이를 만듭니다.
