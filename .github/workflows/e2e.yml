@@ -1,30 +1,21 @@
-name: QA Automation
+# 대상 서비스(qaproject.elice.io)에 실제로 접속하는 E2E 파이프라인.
+# 서비스 가용성·테스트 계정 자격증명에 의존하므로 push 트리거에서 분리하고
+# 필요할 때만 수동(workflow_dispatch)으로 실행한다.
+name: E2E (manual)
 
 on:
-  push:
-    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: '실행할 스위트'
+        type: choice
+        default: all
+        options: [all, api, ui]
 
 jobs:
-  lint:
-    name: Lint (Ruff)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Ruff
-        run: pip install -r requirements-dev.txt --quiet
-
-      - name: Run Ruff check
-        run: ruff check .
-
   api-tests:
     name: API Tests
+    if: inputs.suite == 'all' || inputs.suite == 'api'
     runs-on: ubuntu-latest
 
     steps:
@@ -70,6 +61,7 @@ jobs:
 
   ui-tests:
     name: UI Tests
+    if: inputs.suite == 'all' || inputs.suite == 'ui'
     runs-on: ubuntu-latest
 
     steps:

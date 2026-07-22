@@ -376,7 +376,7 @@ def auth_token():
     return token.removeprefix("Bearer ").strip()
 ```
 
-GitHub Secrets에 `AUTH_TOKEN` 등록 후 `qa.yml` API Tests env에 전달.
+GitHub Secrets에 `AUTH_TOKEN` 등록 후 `e2e.yml` API Tests env에 전달.
 
 ```yaml
 - name: Run API tests

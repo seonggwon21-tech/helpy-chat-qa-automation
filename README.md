@@ -8,7 +8,10 @@
 ![Selenium](https://img.shields.io/badge/Selenium-4.x-43B02A?logo=selenium&logoColor=white)
 ![Allure](https://img.shields.io/badge/Allure-Report-FF6B6B?logo=qameta&logoColor=white)
 ![CI](https://img.shields.io/badge/CI-Jenkins%20%2B%20GitHub%20Actions-D24939?logo=jenkins&logoColor=white)
-[![CI](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/qa.yml/badge.svg)](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/qa.yml)
+[![Lint](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/lint.yml/badge.svg)](https://github.com/seonggwon21-tech/helpy-chat-qa-automation/actions/workflows/lint.yml)
+
+> **CI 구성 안내** — 매 push에는 정적 검사(Ruff)만 게이트로 실행하고, 대상 서비스에 실제 접속하는 E2E(API·UI)는 수동 트리거(`workflow_dispatch`)로 분리했습니다.
+> 대상 서비스가 학습용 데모라 현재는 접근 권한이 종료되어 라이브 실행이 불가하며, 실행 증빙은 아래 Allure·Jenkins 리포트로 보존했습니다.
 
 ---
 

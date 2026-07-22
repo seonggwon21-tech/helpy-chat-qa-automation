@@ -44,7 +44,8 @@ helpy-chat-qa-automation/
 ├── allure-results/            # Allure raw 데이터 (environment.properties 포함)
 ├── .github/
 │   └── workflows/
-│       └── qa.yml             # GitHub Actions — Lint → API Tests → UI Tests 3-job 파이프라인
+│       ├── lint.yml           # GitHub Actions — push 게이트 (Ruff 정적 검사)
+│       └── e2e.yml            # GitHub Actions — 수동 트리거 (API·UI, 대상 서비스 접속 필요)
 ├── conftest.py                # Fixture 정의 (크로스 브라우저, 인증, 쿠키 캐싱, 실패 훅)
 ├── ruff.toml                  # Ruff 정적 분석 설정 (E/F/W/I rules, isort)
 ├── requirements.txt           # 런타임 의존성

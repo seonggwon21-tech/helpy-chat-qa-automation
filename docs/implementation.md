@@ -273,14 +273,16 @@ select = ["E", "F", "W", "I"]   # pycodestyle + pyflakes + isort
 ```
 
 ```yaml
-# .github/workflows/qa.yml
+# .github/workflows/lint.yml — 매 push에서 실행되는 게이트
 lint:
   steps:
     - run: pip install ruff
-    - run: ruff check .          # 위반 발생 시 job 실패 → 이후 테스트 job 차단
+    - run: ruff check .          # 위반 발생 시 job 실패
 ```
 
-**왜 Ruff인가.** flake8 + black + isort를 별도로 설치·설정하면 CI 실행 시간이 늘고 설정 파일도 세 개가 됩니다. Rust로 작성된 Ruff는 동일 규칙을 단일 바이너리로 처리해 **기존 대비 10~100× 빠른 속도**를 내면서 설정을 `ruff.toml` 하나로 통합합니다. Lint job이 통과해야만 API · UI 테스트 job이 실행되는 파이프라인 순서로 명백한 코드 품질 문제를 조기 차단합니다.
+**왜 Ruff인가.** flake8 + black + isort를 별도로 설치·설정하면 CI 실행 시간이 늘고 설정 파일도 세 개가 됩니다. Rust로 작성된 Ruff는 동일 규칙을 단일 바이너리로 처리해 **기존 대비 10~100× 빠른 속도**를 내면서 설정을 `ruff.toml` 하나로 통합합니다. 7초 안에 끝나는 검사라 매 push 게이트로 두어도 부담이 없습니다.
+
+**워크플로우 분리.** 정적 검사(`lint.yml`)는 매 push, 대상 서비스에 실제 접속하는 E2E(`e2e.yml`)는 수동 트리거로 나눴습니다. E2E는 서비스 가용성·테스트 계정 자격증명이라는 외부 요인에 의존해 코드 변경과 무관하게 실패할 수 있고, 그 실패가 push 게이트를 오염시키면 정작 코드 품질 신호를 못 읽게 되기 때문입니다.
 
 ### 13. API 음성(negative) 케이스 — 게이트웨이 409 래핑 분해
 
